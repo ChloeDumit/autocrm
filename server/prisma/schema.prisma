@@ -1,0 +1,252 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  VENDEDOR
+  ASISTENTE
+}
+
+enum VehicleStatus {
+  DISPONIBLE
+  RESERVADO
+  VENDIDO
+  MANTENIMIENTO
+}
+
+enum SaleStage {
+  INTERESADO
+  PRUEBA
+  NEGOCIACION
+  VENDIDO
+  CANCELADO
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole @default(ASISTENTE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales         Sale[]
+  testDrives    TestDrive[]
+  notifications Notification[]
+  createdVehicles Vehicle[] @relation("VehicleCreator")
+  createdClients Client[] @relation("ClientCreator")
+
+  @@map("users")
+}
+
+model Vehicle {
+  id          String        @id @default(cuid())
+  marca       String
+  modelo      String
+  ano         Int
+  precio      Float
+  kilometraje Int
+  estado      VehicleStatus @default(DISPONIBLE)
+  descripcion String?
+  imagen      String?       // URL principal o base64 (para compatibilidad)
+  imagenes    String[]      @default([]) // Array de URLs o base64 de imágenes
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  createdById String
+  createdBy   User          @relation("VehicleCreator", fields: [createdById], references: [id])
+
+  sales      Sale[]
+  testDrives TestDrive[]
+  documents  VehicleDocument[]
+  properties VehicleProperty[]
+
+  @@map("vehicles")
+}
+
+model VehiclePropertyField {
+  id          String   @id @default(cuid())
+  nombre      String   // Nombre de la propiedad (ej: "Patente", "Chasis", "Motor")
+  tipo        String   @default("TEXT") // TEXT, NUMBER, DATE, BOOLEAN
+  esPredefinida Boolean @default(false) // Si es una propiedad predefinida del sistema
+  orden       Int      @default(0) // Orden de visualización
+  activa      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  values VehicleProperty[]
+
+  @@unique([nombre, esPredefinida])
+  @@map("vehicle_property_fields")
+}
+
+model VehicleProperty {
+  id          String   @id @default(cuid())
+  valor       String   @db.Text // Valor de la propiedad (puede ser texto, número, fecha, etc.)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  fieldId String
+  field   VehiclePropertyField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, fieldId])
+  @@map("vehicle_properties")
+}
+
+model Client {
+  id          String   @id @default(cuid())
+  nombre      String
+  email       String?
+  telefono    String
+  direccion   String?
+  interes     String?
+  notas       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String
+  createdBy   User     @relation("ClientCreator", fields: [createdById], references: [id])
+
+  sales      Sale[]
+  testDrives TestDrive[]
+
+  @@map("clients")
+}
+
+model Sale {
+  id          String    @id @default(cuid())
+  etapa       SaleStage @default(INTERESADO)
+  precioFinal Float?
+  notas       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  vendedorId String
+  vendedor   User   @relation(fields: [vendedorId], references: [id])
+
+  @@map("sales")
+}
+
+model TestDrive {
+  id        String   @id @default(cuid())
+  fecha     DateTime
+  hora      String
+  notas     String?
+  estado    String   @default("PENDIENTE") // PENDIENTE, CONFIRMADO, COMPLETADO, CANCELADO
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  vendedorId String
+  vendedor   User   @relation(fields: [vendedorId], references: [id])
+
+  @@map("test_drives")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  titulo    String
+  mensaje   String
+  leida     Boolean  @default(false)
+  tipo      String   // INFO, WARNING, SUCCESS, ERROR
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model DocumentTemplate {
+  id          String   @id @default(cuid())
+  nombre      String
+  contenido   String   // Template con placeholders como {{cliente_nombre}}, {{vehiculo_marca}}, etc.
+  descripcion String?
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("document_templates")
+}
+
+model VehicleDocument {
+  id          String   @id @default(cuid())
+  nombre      String
+  tipo        String   // TITULO, SEGURO, REVISION, OTRO
+  archivo     String   // URL, ruta o base64 del archivo
+  contenido   String?  @db.Text // Contenido base64 del archivo (opcional, para guardar en DB)
+  mimetype    String?  // Tipo MIME del archivo
+  descripcion String?
+  fechaVencimiento DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("vehicle_documents")
+}
+
+model PaymentMethod {
+  id          String   @id @default(cuid())
+  nombre      String   // EFECTIVO, FINANCIACION, TRANSFERENCIA, CHEQUE, etc.
+  descripcion String?
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  documents PaymentDocument[]
+
+  @@map("payment_methods")
+}
+
+model PaymentDocument {
+  id          String   @id @default(cuid())
+  nombre      String
+  archivo     String   // URL, ruta o base64 del archivo
+  contenido   String?  @db.Text // Contenido base64 del archivo (opcional, para guardar en DB)
+  mimetype    String?  // Tipo MIME del archivo
+  descripcion String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  paymentMethodId String
+  paymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade)
+
+  @@map("payment_documents")
+}
+
+model AppConfig {
+  id          String   @id @default(cuid())
+  nombreEmpresa String @default("AutoCRM")
+  colorPrimario String @default("#3b82f6") // Color principal
+  colorSecundario String @default("#1e40af") // Color secundario
+  logo        String?  // URL del logo
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("app_config")
+}
+

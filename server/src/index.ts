@@ -1,0 +1,90 @@
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import path from 'path';
+import authRoutes from './routes/auth';
+import vehicleRoutes from './routes/vehicles';
+import clientRoutes from './routes/clients';
+import saleRoutes from './routes/sales';
+import testDriveRoutes from './routes/testDrives';
+import notificationRoutes from './routes/notifications';
+import documentTemplateRoutes from './routes/documentTemplates';
+import dashboardRoutes from './routes/dashboard';
+import uploadRoutes from './routes/upload';
+import socialMediaRoutes from './routes/socialMedia';
+import vehicleDocumentRoutes from './routes/vehicleDocuments';
+import paymentMethodRoutes from './routes/paymentMethods';
+import userRoutes from './routes/users';
+import appConfigRoutes from './routes/appConfig';
+import fileRoutes from './routes/files';
+import vehiclePropertyRoutes from './routes/vehicleProperties';
+
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 8000;
+
+// CORS configuration - more flexible in development
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // In development, allow localhost on any port
+    if (process.env.NODE_ENV === 'development') {
+      if (!origin || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+        callback(null, true);
+        return;
+      }
+    }
+    // In production, use FRONTEND_URL
+    const allowedOrigins = process.env.FRONTEND_URL 
+      ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
+      : ['http://localhost:3000'];
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.use(express.json());
+
+// Logging middleware para debug
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`);
+  next();
+});
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/vehicles', vehicleRoutes);
+app.use('/api/clients', clientRoutes);
+app.use('/api/sales', saleRoutes);
+app.use('/api/test-drives', testDriveRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/document-templates', documentTemplateRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api', uploadRoutes);
+app.use('/api/social-media', socialMediaRoutes);
+app.use('/api/vehicle-documents', vehicleDocumentRoutes);
+app.use('/api/payment-methods', paymentMethodRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/app-config', appConfigRoutes);
+app.use('/api/files', fileRoutes);
+app.use('/api/vehicle-properties', vehiclePropertyRoutes);
+
+// Servir archivos estáticos de uploads
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads/images', express.static(path.join(__dirname, '../uploads/images')));
+app.use('/uploads/documents', express.static(path.join(__dirname, '../uploads/documents')));
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'AutoCRM API is running' });
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
+
