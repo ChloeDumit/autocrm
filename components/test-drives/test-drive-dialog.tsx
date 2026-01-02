@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { SearchSelect } from '@/components/ui/search-select'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/error-handler'
 import api from '@/lib/api'
@@ -58,8 +59,10 @@ interface TestDriveDialogProps {
 export function TestDriveDialog({ open, onClose, testDrive }: TestDriveDialogProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
-  const [vehicles, setVehicles] = useState<any[]>([])
-  const [clients, setClients] = useState<any[]>([])
+  const [vehicleSearchResults, setVehicleSearchResults] = useState<any[]>([])
+  const [clientSearchResults, setClientSearchResults] = useState<any[]>([])
+  const [vehicleSearchLoading, setVehicleSearchLoading] = useState(false)
+  const [clientSearchLoading, setClientSearchLoading] = useState(false)
 
   const {
     register,
@@ -82,8 +85,8 @@ export function TestDriveDialog({ open, onClose, testDrive }: TestDriveDialogPro
 
   useEffect(() => {
     if (open) {
-      fetchVehicles()
-      fetchClients()
+      searchVehicles('')
+      searchClients('')
     }
   }, [open])
 
@@ -98,6 +101,9 @@ export function TestDriveDialog({ open, onClose, testDrive }: TestDriveDialogPro
         estado: testDrive.estado as any,
         notas: testDrive.notas || '',
       })
+      // Load specific vehicle and client data
+      if (testDrive.vehicleId) fetchVehicleById(testDrive.vehicleId)
+      if (testDrive.clientId) fetchClientById(testDrive.clientId)
     } else {
       reset({
         vehicleId: '',
@@ -110,21 +116,61 @@ export function TestDriveDialog({ open, onClose, testDrive }: TestDriveDialogPro
     }
   }, [testDrive, reset])
 
-  const fetchVehicles = async () => {
+  const searchVehicles = useCallback(async (search: string) => {
+    setVehicleSearchLoading(true)
     try {
-      const res = await api.get('/vehicles')
-      setVehicles(res.data)
+      const params: any = {}
+      if (search) params.search = search
+      const res = await api.get('/vehicles', { params })
+      setVehicleSearchResults(res.data)
     } catch (error) {
-      console.error('Error fetching vehicles:', error)
+      console.error('Error searching vehicles:', error)
+      setVehicleSearchResults([])
+    } finally {
+      setVehicleSearchLoading(false)
+    }
+  }, [])
+
+  const searchClients = useCallback(async (search: string) => {
+    setClientSearchLoading(true)
+    try {
+      const params: any = {}
+      if (search) params.search = search
+      const res = await api.get('/clients', { params })
+      setClientSearchResults(res.data)
+    } catch (error) {
+      console.error('Error searching clients:', error)
+      setClientSearchResults([])
+    } finally {
+      setClientSearchLoading(false)
+    }
+  }, [])
+
+  const fetchVehicleById = async (id: string) => {
+    try {
+      const res = await api.get(`/vehicles/${id}`)
+      setVehicleSearchResults((prev) => {
+        if (!prev.find((v) => v.id === id)) {
+          return [res.data, ...prev]
+        }
+        return prev
+      })
+    } catch (error) {
+      console.error('Error fetching vehicle:', error)
     }
   }
 
-  const fetchClients = async () => {
+  const fetchClientById = async (id: string) => {
     try {
-      const res = await api.get('/clients')
-      setClients(res.data)
+      const res = await api.get(`/clients/${id}`)
+      setClientSearchResults((prev) => {
+        if (!prev.find((c) => c.id === id)) {
+          return [res.data, ...prev]
+        }
+        return prev
+      })
     } catch (error) {
-      console.error('Error fetching clients:', error)
+      console.error('Error fetching client:', error)
     }
   }
 
@@ -172,48 +218,32 @@ export function TestDriveDialog({ open, onClose, testDrive }: TestDriveDialogPro
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="vehicleId">Vehículo *</Label>
-              <Select
-                value={watch('vehicleId')}
-                onValueChange={(value) => setValue('vehicleId', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un vehículo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vehicles.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.marca} {vehicle.modelo} ({vehicle.ano})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.vehicleId && (
-                <p className="text-sm text-red-500">{errors.vehicleId.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="clientId">Cliente *</Label>
-              <Select
-                value={watch('clientId')}
-                onValueChange={(value) => setValue('clientId', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.nombre} - {client.telefono}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.clientId && (
-                <p className="text-sm text-red-500">{errors.clientId.message}</p>
-              )}
-            </div>
+            <SearchSelect
+              label="Vehículo *"
+              placeholder="Buscar vehículo por marca o modelo..."
+              value={watch('vehicleId')}
+              onValueChange={(value) => setValue('vehicleId', value)}
+              items={vehicleSearchResults.map((vehicle) => ({
+                id: vehicle.id,
+                label: `${vehicle.marca} ${vehicle.modelo} (${vehicle.ano})`,
+              }))}
+              onSearch={searchVehicles}
+              loading={vehicleSearchLoading}
+              error={errors.vehicleId?.message}
+            />
+            <SearchSelect
+              label="Cliente *"
+              placeholder="Buscar cliente por nombre o teléfono..."
+              value={watch('clientId')}
+              onValueChange={(value) => setValue('clientId', value)}
+              items={clientSearchResults.map((client) => ({
+                id: client.id,
+                label: `${client.nombre}${client.telefono ? ` - ${client.telefono}` : ''}`,
+              }))}
+              onSearch={searchClients}
+              loading={clientSearchLoading}
+              error={errors.clientId?.message}
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-4">

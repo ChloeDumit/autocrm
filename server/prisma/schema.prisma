@@ -55,6 +55,7 @@ model Vehicle {
   modelo      String
   ano         Int
   precio      Float
+  moneda      String        @default("USD") // USD, ARS, EUR, etc.
   kilometraje Int
   estado      VehicleStatus @default(DISPONIBLE)
   descripcion String?
@@ -141,7 +142,42 @@ model Sale {
   vendedorId String
   vendedor   User   @relation(fields: [vendedorId], references: [id])
 
+  paymentMethods SalePaymentMethod[]
+  documents      SaleDocument[]
+
   @@map("sales")
+}
+
+model SalePaymentMethod {
+  id        String   @id @default(cuid())
+  monto     Float?   // Monto pagado con este método (opcional)
+  notas     String?  // Notas adicionales (ej: número de cheque, cuotas, etc.)
+  createdAt DateTime @default(now())
+
+  saleId String
+  sale   Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  paymentMethodId String
+  paymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+
+  @@map("sale_payment_methods")
+}
+
+model SaleDocument {
+  id          String   @id @default(cuid())
+  nombre      String
+  tipo        String   // CONTRATO, RECIBO, TRANSFERENCIA, OTRO
+  archivo     String   // URL, ruta o base64 del archivo
+  contenido   String?  @db.Text // Contenido base64 del archivo
+  mimetype    String?  // Tipo MIME del archivo
+  descripcion String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  saleId String
+  sale   Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@map("sale_documents")
 }
 
 model TestDrive {
@@ -217,7 +253,8 @@ model PaymentMethod {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  documents PaymentDocument[]
+  documents     PaymentDocument[]
+  salePayments  SalePaymentMethod[]
 
   @@map("payment_methods")
 }

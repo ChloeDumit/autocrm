@@ -32,7 +32,7 @@ export function TemplateCard({ template, onEdit, onDelete }: TemplateCardProps) 
               </p>
             )}
           </div>
-          <Badge variant={template.activo ? 'default' : 'secondary'}>
+          <Badge variant="outline" className={template.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
             {template.activo ? 'Activo' : 'Inactivo'}
           </Badge>
         </div>

@@ -30,34 +30,34 @@ import { Upload, X, FileText } from 'lucide-react'
 
 const documentSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido'),
-  tipo: z.enum(['TITULO', 'SEGURO', 'REVISION', 'OTRO']),
+  tipo: z.enum(['CONTRATO', 'RECIBO', 'TRANSFERENCIA', 'OTRO']),
   descripcion: z.string().optional(),
-  fechaVencimiento: z.string().optional(),
 })
 
 type DocumentFormData = z.infer<typeof documentSchema>
 
-interface VehicleDocument {
+interface SaleDocument {
   id: string
   nombre: string
   tipo: string
   archivo: string
   descripcion?: string
-  fechaVencimiento?: string
+  contenido?: string
+  mimetype?: string
 }
 
-interface VehicleDocumentsDialogProps {
+interface SaleDocumentsDialogProps {
   open: boolean
   onClose: () => void
-  vehicleId: string | null
+  saleId: string | null
 }
 
-export function VehicleDocumentsDialog({ open, onClose, vehicleId }: VehicleDocumentsDialogProps) {
+export function SaleDocumentsDialog({ open, onClose, saleId }: SaleDocumentsDialogProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [documents, setDocuments] = useState<VehicleDocument[]>([])
-  const [selectedDocument, setSelectedDocument] = useState<VehicleDocument | null>(null)
+  const [documents, setDocuments] = useState<SaleDocument[]>([])
+  const [selectedDocument, setSelectedDocument] = useState<SaleDocument | null>(null)
   const [showForm, setShowForm] = useState(false)
 
   const {
@@ -73,63 +73,31 @@ export function VehicleDocumentsDialog({ open, onClose, vehicleId }: VehicleDocu
       nombre: '',
       tipo: 'OTRO',
       descripcion: '',
-      fechaVencimiento: '',
     },
   })
 
   useEffect(() => {
-    if (open && vehicleId) {
+    if (open && saleId) {
       fetchDocuments()
     }
-  }, [open, vehicleId])
+  }, [open, saleId])
 
   const fetchDocuments = async () => {
-    if (!vehicleId) return
+    if (!saleId) return
     try {
-      const res = await api.get(`/vehicle-documents/vehicle/${vehicleId}`)
+      const res = await api.get(`/sale-documents/sale/${saleId}`)
       setDocuments(res.data)
     } catch (error) {
       console.error('Error fetching documents:', error)
     }
   }
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setUploading(true)
-    const formData = new FormData()
-    formData.append('image', file)
-
-    try {
-      const res = await api.post('/vehicle-image', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      })
-      setValue('archivo' as any, res.data.url)
-      toast({
-        title: 'Éxito',
-        description: 'Archivo subido correctamente',
-      })
-    } catch (error: any) {
-      const errorMessage = getErrorMessage(error, 'Error al subir archivo')
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      })
-    } finally {
-      setUploading(false)
-    }
-  }
-
   const onSubmit = async (data: DocumentFormData) => {
-    if (!vehicleId) return
+    if (!saleId) return
 
     setLoading(true)
     try {
-      const fileInput = document.getElementById('documentFile') as HTMLInputElement
+      const fileInput = document.getElementById('saleDocumentFile') as HTMLInputElement
       if (!fileInput?.files?.[0] && !selectedDocument) {
         toast({
           title: 'Error',
@@ -143,7 +111,7 @@ export function VehicleDocumentsDialog({ open, onClose, vehicleId }: VehicleDocu
       let archivo = ''
       let contenido = ''
       let mimetype = ''
-      
+
       if (fileInput?.files?.[0]) {
         const formData = new FormData()
         formData.append('image', fileInput.files[0])
@@ -155,32 +123,32 @@ export function VehicleDocumentsDialog({ open, onClose, vehicleId }: VehicleDocu
         mimetype = uploadRes.data.mimetype || ''
       } else if (selectedDocument) {
         archivo = selectedDocument.archivo
-        contenido = (selectedDocument as any).contenido || ''
-        mimetype = (selectedDocument as any).mimetype || ''
+        contenido = selectedDocument.contenido || ''
+        mimetype = selectedDocument.mimetype || ''
       }
 
       if (selectedDocument) {
-        await api.put(`/vehicle-documents/${selectedDocument.id}`, {
+        await api.put(`/sale-documents/${selectedDocument.id}`, {
           ...data,
           archivo,
           contenido,
           mimetype,
         })
         toast({
-          title: 'Éxito',
-          description: 'Documento actualizado correctamente',
+          title: 'Documento actualizado',
+          description: 'El documento fue actualizado correctamente',
         })
       } else {
-        await api.post('/vehicle-documents', {
+        await api.post('/sale-documents', {
           ...data,
           archivo,
           contenido,
           mimetype,
-          vehicleId,
+          saleId,
         })
         toast({
-          title: 'Éxito',
-          description: 'Documento creado correctamente',
+          title: 'Documento agregado',
+          description: 'El documento fue agregado correctamente',
         })
       }
 
@@ -204,10 +172,10 @@ export function VehicleDocumentsDialog({ open, onClose, vehicleId }: VehicleDocu
     if (!confirm('¿Estás seguro de eliminar este documento?')) return
 
     try {
-      await api.delete(`/vehicle-documents/${id}`)
+      await api.delete(`/sale-documents/${id}`)
       toast({
-        title: 'Éxito',
-        description: 'Documento eliminado correctamente',
+        title: 'Documento eliminado',
+        description: 'El documento fue eliminado correctamente',
       })
       fetchDocuments()
     } catch (error: any) {
@@ -220,15 +188,12 @@ export function VehicleDocumentsDialog({ open, onClose, vehicleId }: VehicleDocu
     }
   }
 
-  const handleEdit = (doc: VehicleDocument) => {
+  const handleEdit = (doc: SaleDocument) => {
     setSelectedDocument(doc)
     reset({
       nombre: doc.nombre,
       tipo: doc.tipo as any,
       descripcion: doc.descripcion || '',
-      fechaVencimiento: doc.fechaVencimiento
-        ? new Date(doc.fechaVencimiento).toISOString().split('T')[0]
-        : '',
     })
     setShowForm(true)
   }
@@ -239,19 +204,17 @@ export function VehicleDocumentsDialog({ open, onClose, vehicleId }: VehicleDocu
       nombre: '',
       tipo: 'OTRO',
       descripcion: '',
-      fechaVencimiento: '',
     })
     setShowForm(true)
   }
 
-  const handleViewDocument = async (doc: VehicleDocument) => {
-    // Si tiene contenido base64, usar fetch con token de autenticación
-    if ((doc as any).contenido) {
+  const handleViewDocument = async (doc: SaleDocument) => {
+    if (doc.contenido) {
       try {
-        const response = await api.get(`/files/vehicle-document/${doc.id}`, {
+        const response = await api.get(`/files/sale-document/${doc.id}`, {
           responseType: 'blob',
         })
-        const blob = new Blob([response.data], { type: (doc as any).mimetype || 'application/pdf' })
+        const blob = new Blob([response.data], { type: doc.mimetype || 'application/pdf' })
         const blobUrl = URL.createObjectURL(blob)
         window.open(blobUrl, '_blank')
       } catch (error) {
@@ -262,7 +225,6 @@ export function VehicleDocumentsDialog({ open, onClose, vehicleId }: VehicleDocu
         })
       }
     } else {
-      // Si no tiene contenido base64, usar la URL directa
       let url = doc.archivo
       if (!doc.archivo.startsWith('http')) {
         const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000'
@@ -272,15 +234,25 @@ export function VehicleDocumentsDialog({ open, onClose, vehicleId }: VehicleDocu
     }
   }
 
-  if (!vehicleId) return null
+  const getDocumentTypeLabel = (tipo: string) => {
+    const types: Record<string, string> = {
+      CONTRATO: 'Contrato',
+      RECIBO: 'Recibo',
+      TRANSFERENCIA: 'Transferencia',
+      OTRO: 'Otro',
+    }
+    return types[tipo] || tipo
+  }
+
+  if (!saleId) return null
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Documentos del Vehículo</DialogTitle>
+          <DialogTitle>Documentos de la Venta</DialogTitle>
           <DialogDescription>
-            Gestiona los documentos asociados a este vehículo
+            Gestiona los documentos asociados a esta venta
           </DialogDescription>
         </DialogHeader>
 
@@ -309,16 +281,13 @@ export function VehicleDocumentsDialog({ open, onClose, vehicleId }: VehicleDocu
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4 text-muted-foreground" />
                           <span className="font-medium">{doc.nombre}</span>
-                          <span className="text-xs text-muted-foreground">({doc.tipo})</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({getDocumentTypeLabel(doc.tipo)})
+                          </span>
                         </div>
                         {doc.descripcion && (
                           <p className="text-sm text-muted-foreground mt-1">
                             {doc.descripcion}
-                          </p>
-                        )}
-                        {doc.fechaVencimiento && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Vence: {new Date(doc.fechaVencimiento).toLocaleDateString('es-ES')}
                           </p>
                         )}
                       </div>
@@ -370,9 +339,9 @@ export function VehicleDocumentsDialog({ open, onClose, vehicleId }: VehicleDocu
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="TITULO">Título</SelectItem>
-                      <SelectItem value="SEGURO">Seguro</SelectItem>
-                      <SelectItem value="REVISION">Revisión</SelectItem>
+                      <SelectItem value="CONTRATO">Contrato</SelectItem>
+                      <SelectItem value="RECIBO">Recibo</SelectItem>
+                      <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
                       <SelectItem value="OTRO">Otro</SelectItem>
                     </SelectContent>
                   </Select>
@@ -380,28 +349,21 @@ export function VehicleDocumentsDialog({ open, onClose, vehicleId }: VehicleDocu
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="documentFile">Archivo *</Label>
+                <Label htmlFor="saleDocumentFile">Archivo *</Label>
                 <Input
-                  id="documentFile"
+                  id="saleDocumentFile"
                   type="file"
                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                  onChange={handleFileUpload}
                   disabled={uploading}
                 />
                 {uploading && (
                   <p className="text-sm text-muted-foreground">Subiendo archivo...</p>
                 )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fechaVencimiento">Fecha de Vencimiento</Label>
-                  <Input
-                    id="fechaVencimiento"
-                    type="date"
-                    {...register('fechaVencimiento')}
-                  />
-                </div>
+                {selectedDocument && (
+                  <p className="text-sm text-muted-foreground">
+                    Archivo actual: {selectedDocument.nombre}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -436,4 +398,3 @@ export function VehicleDocumentsDialog({ open, onClose, vehicleId }: VehicleDocu
     </Dialog>
   )
 }
-

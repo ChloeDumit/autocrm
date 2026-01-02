@@ -8,10 +8,34 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import api from '@/lib/api'
-import { ArrowLeft, Edit, Trash2, FileText, User, Car, DollarSign, Calendar } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, FileText, User, Car, DollarSign, Calendar, CreditCard, FolderOpen } from 'lucide-react'
 import { SaleDialog } from '@/components/sales/sale-dialog'
 import { GenerateDocumentDialog } from '@/components/sales/generate-document-dialog'
+import { SaleDocumentsDialog } from '@/components/sales/sale-documents-dialog'
+import { SalePaymentMethodsDialog } from '@/components/sales/sale-payment-methods-dialog'
 import Image from 'next/image'
+
+interface PaymentMethod {
+  id: string
+  nombre: string
+}
+
+interface SalePaymentMethod {
+  id: string
+  monto?: number
+  notas?: string
+  paymentMethod: PaymentMethod
+}
+
+interface SaleDocument {
+  id: string
+  nombre: string
+  tipo: string
+  archivo: string
+  descripcion?: string
+  contenido?: string
+  mimetype?: string
+}
 
 interface Sale {
   id: string
@@ -42,6 +66,8 @@ interface Sale {
     name: string
     email: string
   }
+  paymentMethods?: SalePaymentMethod[]
+  documents?: SaleDocument[]
 }
 
 export default function SaleDetailPage() {
@@ -52,6 +78,8 @@ export default function SaleDetailPage() {
   const [loading, setLoading] = useState(true)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false)
+  const [saleDocumentsDialogOpen, setSaleDocumentsDialogOpen] = useState(false)
+  const [paymentMethodsDialogOpen, setPaymentMethodsDialogOpen] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -150,6 +178,20 @@ export default function SaleDetailPage() {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setPaymentMethodsDialogOpen(true)}
+            >
+              <CreditCard className="mr-2 h-4 w-4" />
+              Formas de Pago
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setSaleDocumentsDialogOpen(true)}
+            >
+              <FolderOpen className="mr-2 h-4 w-4" />
+              Documentos
+            </Button>
             <Button
               variant="outline"
               onClick={() => setDocumentDialogOpen(true)}
@@ -374,6 +416,81 @@ export default function SaleDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Formas de Pago */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Formas de Pago
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPaymentMethodsDialogOpen(true)}
+                >
+                  Gestionar
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {sale.paymentMethods && sale.paymentMethods.length > 0 ? (
+                  <div className="space-y-2">
+                    {sale.paymentMethods.map((pm) => (
+                      <div key={pm.id} className="flex justify-between items-center text-sm">
+                        <span>{pm.paymentMethod.nombre}</span>
+                        {pm.monto && (
+                          <span className="font-medium">${pm.monto.toLocaleString()}</span>
+                        )}
+                      </div>
+                    ))}
+                    <div className="border-t pt-2 mt-2 flex justify-between font-medium">
+                      <span>Total</span>
+                      <span>
+                        ${sale.paymentMethods.reduce((sum, pm) => sum + (pm.monto || 0), 0).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No hay formas de pago registradas
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Documentos */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FolderOpen className="h-4 w-4" />
+                  Documentos
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSaleDocumentsDialogOpen(true)}
+                >
+                  Gestionar
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {sale.documents && sale.documents.length > 0 ? (
+                  <div className="space-y-2">
+                    {sale.documents.map((doc) => (
+                      <div key={doc.id} className="flex items-center gap-2 text-sm">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span>{doc.nombre}</span>
+                        <span className="text-xs text-muted-foreground">({doc.tipo})</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No hay documentos registrados
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
@@ -391,6 +508,24 @@ export default function SaleDetailPage() {
         open={documentDialogOpen}
         onClose={() => setDocumentDialogOpen(false)}
         sale={sale}
+      />
+
+      <SalePaymentMethodsDialog
+        open={paymentMethodsDialogOpen}
+        onClose={() => {
+          setPaymentMethodsDialogOpen(false)
+          fetchSale()
+        }}
+        saleId={sale.id}
+      />
+
+      <SaleDocumentsDialog
+        open={saleDocumentsDialogOpen}
+        onClose={() => {
+          setSaleDocumentsDialogOpen(false)
+          fetchSale()
+        }}
+        saleId={sale.id}
       />
     </MainLayout>
   )

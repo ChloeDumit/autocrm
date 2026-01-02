@@ -89,7 +89,7 @@ export default function TemplatesPage() {
               Gestiona las plantillas para documentos de venta
             </p>
           </div>
-          <Button onClick={handleCreate}>
+          <Button variant="outline" onClick={handleCreate}>
             <Plus className="mr-2 h-4 w-4" />
             Nueva Plantilla
           </Button>

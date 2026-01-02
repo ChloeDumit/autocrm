@@ -230,7 +230,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex justify-end">
-                <Button type="submit" disabled={loading}>
+                <Button variant="outline" type="submit" disabled={loading}>
                   {loading ? 'Guardando...' : 'Guardar Configuración'}
                 </Button>
               </div>

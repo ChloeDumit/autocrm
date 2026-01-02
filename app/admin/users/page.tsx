@@ -89,7 +89,7 @@ export default function UsersPage() {
               Administra los usuarios del sistema
             </p>
           </div>
-          <Button onClick={handleCreate}>
+          <Button variant="outline" onClick={handleCreate}>
             <Plus className="mr-2 h-4 w-4" />
             Nuevo Usuario
           </Button>

@@ -62,6 +62,15 @@ router.get('/:id', authenticate, async (req, res) => {
         vendedor: {
           select: { name: true, email: true, role: true },
         },
+        paymentMethods: {
+          include: {
+            paymentMethod: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        documents: {
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 

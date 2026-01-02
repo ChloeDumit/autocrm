@@ -12,15 +12,7 @@ import { getErrorMessage } from '@/lib/error-handler'
 import { useAppConfig } from '@/lib/app-config'
 import Link from 'next/link'
 import Image from 'next/image'
-
-const adjustBrightness = (hex: string, percent: number) => {
-  const num = parseInt(hex.replace('#', ''), 16)
-  const amt = Math.round(2.55 * percent)
-  const R = Math.min(255, Math.max(0, (num >> 16) + amt))
-  const G = Math.min(255, Math.max(0, ((num >> 8) & 0x00ff) + amt))
-  const B = Math.min(255, Math.max(0, (num & 0x0000ff) + amt))
-  return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`
-}
+import { Car, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -32,7 +24,6 @@ export default function LoginPage() {
   const { config } = useAppConfig()
 
   const primaryColor = config?.colorPrimario || '#3b82f6'
-  const secondaryColor = config?.colorSecundario || '#1e40af'
   const nombreEmpresa = config?.nombreEmpresa || 'AutoCRM'
   const logo = config?.logo
 
@@ -50,7 +41,7 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error('Login error:', error)
       const errorMessage = getErrorMessage(error, 'Error al iniciar sesión')
-      
+
       toast({
         title: 'Error',
         description: errorMessage,
@@ -62,17 +53,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center p-4"
-      style={{
-        background: `linear-gradient(135deg, ${primaryColor}15 0%, ${secondaryColor}15 100%)`,
-      }}
-    >
-      <Card className="w-full max-w-md shadow-xl">
-        <CardHeader className="text-center space-y-4">
-          {logo && (
-            <div className="flex justify-center">
-              <div className="relative h-16 w-16">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-muted/30">
+      <div className="w-full max-w-md">
+        {/* Logo and branding */}
+        <div className="text-center mb-8">
+          {logo ? (
+            <div className="flex justify-center mb-4">
+              <div className="relative h-16 w-16 rounded-2xl overflow-hidden shadow-lg" style={{ backgroundColor: `${primaryColor}10` }}>
                 <Image
                   src={
                     logo.startsWith('http')
@@ -81,68 +68,97 @@ export default function LoginPage() {
                   }
                   alt={nombreEmpresa}
                   fill
-                  className="object-contain"
+                  className="object-contain p-2"
                 />
               </div>
             </div>
+          ) : (
+            <div className="flex justify-center mb-4">
+              <div
+                className="flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+                style={{ backgroundColor: primaryColor }}
+              >
+                <Car className="h-8 w-8 text-white" />
+              </div>
+            </div>
           )}
-          <div>
-            <CardTitle className="text-2xl" style={{ color: primaryColor }}>
-              {nombreEmpresa}
-            </CardTitle>
-            <CardDescription>Inicia sesión en tu cuenta</CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="tu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={loading}
-              style={{
-                backgroundColor: primaryColor,
-                color: '#ffffff',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = adjustBrightness(primaryColor, -10)
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = primaryColor
-              }}
-            >
-              {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
-            </Button>
-            <div className="text-center text-sm">
+          <h1 className="text-2xl font-bold text-foreground">{nombreEmpresa}</h1>
+          <p className="text-muted-foreground mt-1">Sistema de gestión automotriz</p>
+        </div>
+
+        {/* Login Card */}
+        <Card className="shadow-lg border-border/50">
+          <CardHeader className="text-center pb-4">
+            <CardTitle className="text-xl">Iniciar sesión</CardTitle>
+            <CardDescription>
+              Ingresa tus credenciales para acceder
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="tu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Contraseña</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  className="h-11"
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full h-11"
+                disabled={loading}
+                style={{
+                  backgroundColor: primaryColor,
+                }}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Iniciando sesión...
+                  </>
+                ) : (
+                  'Iniciar sesión'
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center text-sm">
               <span className="text-muted-foreground">¿No tienes cuenta? </span>
-              <Link href="/register" className="text-primary hover:underline">
+              <Link
+                href="/register"
+                className="font-medium hover:underline"
+                style={{ color: primaryColor }}
+              >
                 Regístrate
               </Link>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          Al iniciar sesión, aceptas nuestros términos y condiciones
+        </p>
+      </div>
     </div>
   )
 }
-

@@ -1,9 +1,8 @@
 'use client'
 
-import { Bell } from 'lucide-react'
+import { Bell, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useNotifications } from '@/hooks/use-notifications'
-import { useAppConfig } from '@/lib/app-config'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,38 +10,49 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-export function Header() {
-  const { unreadCount, notifications, markAsRead, markAllAsRead } = useNotifications()
-  const { config } = useAppConfig()
+interface HeaderProps {
+  onMenuClick?: () => void
+}
 
-  const nombreEmpresa = config?.nombreEmpresa || 'AutoCRM'
+export function Header({ onMenuClick }: HeaderProps) {
+  const { unreadCount, notifications, markAsRead, markAllAsRead } = useNotifications()
 
   return (
-    <header className="flex h-16 items-center justify-between border-b bg-white px-6">
-      <div className="flex items-center gap-4">
-        <h2 className="text-xl font-semibold">{nombreEmpresa}</h2>
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6">
+      <div className="flex items-center gap-3">
+        {onMenuClick && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden h-9 w-9"
+            onClick={onMenuClick}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        )}
+        <div className="lg:hidden" />
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
+            <Button variant="ghost" size="icon" className="relative h-9 w-9">
+              <Bell className="h-4.5 w-4.5" />
               {unreadCount > 0 && (
-                <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground ring-2 ring-background">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
-            <div className="flex items-center justify-between p-2">
-              <span className="font-semibold">Notificaciones</span>
+            <div className="flex items-center justify-between p-3 border-b">
+              <span className="text-sm font-semibold">Notificaciones</span>
               {unreadCount > 0 && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={markAllAsRead}
-                  className="h-8 text-xs"
+                  className="h-7 text-xs text-primary hover:text-primary"
                 >
                   Marcar todas como leídas
                 </Button>
@@ -50,28 +60,31 @@ export function Header() {
             </div>
             <div className="max-h-96 overflow-y-auto">
               {notifications.length === 0 ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  No hay notificaciones
+                <div className="p-8 text-center">
+                  <Bell className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
+                  <p className="text-sm text-muted-foreground">No hay notificaciones</p>
                 </div>
               ) : (
                 notifications.slice(0, 10).map((notification) => (
                   <DropdownMenuItem
                     key={notification.id}
-                    className="flex flex-col items-start p-3"
+                    className="flex flex-col items-start p-3 cursor-pointer"
                     onClick={() => !notification.leida && markAsRead(notification.id)}
                   >
-                    <div className="flex w-full items-start justify-between">
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{notification.titulo}</p>
-                        <p className="text-xs text-muted-foreground">
+                    <div className="flex w-full items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm text-foreground truncate">
+                          {notification.titulo}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                           {notification.mensaje}
                         </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="mt-1.5 text-xs text-muted-foreground/60">
                           {new Date(notification.createdAt).toLocaleString('es-ES')}
                         </p>
                       </div>
                       {!notification.leida && (
-                        <div className="ml-2 h-2 w-2 rounded-full bg-blue-500" />
+                        <div className="mt-1 h-2 w-2 rounded-full bg-primary flex-shrink-0" />
                       )}
                     </div>
                   </DropdownMenuItem>
@@ -84,4 +97,3 @@ export function Header() {
     </header>
   )
 }
-

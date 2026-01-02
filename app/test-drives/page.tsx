@@ -107,7 +107,7 @@ export default function TestDrivesPage() {
               Gestiona los test drives agendados
             </p>
           </div>
-          <Button onClick={handleCreate}>
+          <Button variant="outline" onClick={handleCreate}>
             <Plus className="mr-2 h-4 w-4" />
             Agendar Test Drive
           </Button>

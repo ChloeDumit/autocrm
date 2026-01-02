@@ -3,17 +3,24 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { MainLayout } from '@/components/layout/main-layout'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useToast } from '@/hooks/use-toast'
 import api from '@/lib/api'
-import { ArrowLeft, Edit, Trash2, FileText, Share2, Calendar, DollarSign, User, ShoppingCart } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, FileText, Share2, MoreHorizontal, ShoppingCart, Gauge, Calendar, User, Car } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { VehicleDocumentsDialog } from '@/components/vehicles/vehicle-documents-dialog'
 import { SocialMediaDialog } from '@/components/vehicles/social-media-dialog'
-import { VehicleDialog } from '@/components/vehicles/vehicle-dialog'
 import { SaleDialog } from '@/components/sales/sale-dialog'
 import { ImageCarousel } from '@/components/vehicles/image-carousel'
+import { cn } from '@/lib/utils'
 
 interface Vehicle {
   id: string
@@ -50,7 +57,6 @@ export default function VehicleDetailPage() {
   const [documents, setDocuments] = useState<VehicleDocument[]>([])
   const [properties, setProperties] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [documentsDialogOpen, setDocumentsDialogOpen] = useState(false)
   const [socialDialogOpen, setSocialDialogOpen] = useState(false)
   const [saleDialogOpen, setSaleDialogOpen] = useState(false)
@@ -117,29 +123,19 @@ export default function VehicleDetailPage() {
     }
   }
 
-  const statusColors: Record<string, string> = {
-    DISPONIBLE: 'bg-green-100 text-green-800',
-    RESERVADO: 'bg-yellow-100 text-yellow-800',
-    VENDIDO: 'bg-gray-100 text-gray-800',
-    MANTENIMIENTO: 'bg-red-100 text-red-800',
+  const statusConfig: Record<string, { className: string; label: string }> = {
+    DISPONIBLE: { className: 'status-available', label: 'Disponible' },
+    RESERVADO: { className: 'status-reserved', label: 'Reservado' },
+    VENDIDO: { className: 'status-sold', label: 'Vendido' },
+    MANTENIMIENTO: { className: 'status-maintenance', label: 'En Mantenimiento' },
   }
-
-  const statusLabels: Record<string, string> = {
-    DISPONIBLE: 'Disponible',
-    RESERVADO: 'Reservado',
-    VENDIDO: 'Vendido',
-    MANTENIMIENTO: 'En Mantenimiento',
-  }
-
 
   const getDocumentUrl = async (doc: VehicleDocument) => {
-    // Si tiene contenido base64, usar endpoint de la API con token
     if ((doc as any).contenido) {
       const token = localStorage.getItem('token')
       const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000'
       return `${baseUrl}/api/files/vehicle-document/${doc.id}?token=${token}`
     }
-    // Si no, usar la URL del archivo
     if (doc.archivo.startsWith('http')) return doc.archivo
     const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000'
     return `${baseUrl}${doc.archivo}`
@@ -147,10 +143,8 @@ export default function VehicleDetailPage() {
 
   const handleViewDocument = async (doc: VehicleDocument) => {
     const url = await getDocumentUrl(doc)
-    // Crear un iframe temporal para mostrar el documento con autenticación
     const token = localStorage.getItem('token')
     if ((doc as any).contenido && token) {
-      // Para documentos con contenido base64, usar fetch con token
       try {
         const response = await api.get(`/files/vehicle-document/${doc.id}`, {
           responseType: 'blob',
@@ -184,73 +178,76 @@ export default function VehicleDetailPage() {
     return null
   }
 
-  const allImages = vehicle.imagenes && vehicle.imagenes.length > 0 
-    ? vehicle.imagenes 
+  const allImages = vehicle.imagenes && vehicle.imagenes.length > 0
+    ? vehicle.imagenes
     : (vehicle.imagen ? [vehicle.imagen] : [])
+
+  const status = statusConfig[vehicle.estado] || { className: '', label: vehicle.estado }
 
   return (
     <MainLayout>
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => router.push('/vehicles')}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Volver
+            <Button variant="ghost" size="sm" onClick={() => router.push('/vehicles')}>
+              <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">
-                {vehicle.marca} {vehicle.modelo} ({vehicle.ano})
-              </h1>
-              <p className="text-muted-foreground">Detalles del vehículo</p>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-semibold">
+                  {vehicle.marca} {vehicle.modelo}
+                </h1>
+                <Badge className={cn("status-badge", status.className)}>
+                  {status.label}
+                </Badge>
+              </div>
+              <p className="text-muted-foreground text-sm">{vehicle.ano}</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => setSaleDialogOpen(true)}
-              className="bg-primary text-primary-foreground"
-            >
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setSaleDialogOpen(true)}>
               <ShoppingCart className="mr-2 h-4 w-4" />
               Crear Venta
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => setDocumentsDialogOpen(true)}
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              Documentos ({documents.length})
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setSocialDialogOpen(true)}
-            >
-              <Share2 className="mr-2 h-4 w-4" />
-              Compartir
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setEditDialogOpen(true)}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Editar
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleDelete}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Eliminar
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => router.push(`/vehicles/${vehicle.id}/edit`)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Editar
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDocumentsDialogOpen(true)}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Documentos ({documents.length})
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSocialDialogOpen(true)}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Compartir
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleDelete}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Eliminar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Imágenes */}
-          <div className="lg:col-span-2">
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* Left: Images */}
+          <div className="lg:col-span-3">
             <Card>
-              <CardHeader>
-                <CardTitle>Imágenes</CardTitle>
-              </CardHeader>
-              <CardContent>
+              <CardContent className="p-4">
                 <ImageCarousel
                   images={allImages}
                   alt={`${vehicle.marca} ${vehicle.modelo}`}
@@ -259,100 +256,108 @@ export default function VehicleDetailPage() {
             </Card>
           </div>
 
-          {/* Información */}
-          <div className="space-y-6">
+          {/* Right: Key Info */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Price Card */}
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="p-6">
+                <p className="text-sm text-muted-foreground mb-1">Precio</p>
+                <p className="text-3xl font-bold text-primary">
+                  ${vehicle.precio.toLocaleString()}
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Specs */}
             <Card>
-              <CardHeader>
-                <CardTitle>Información General</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Estado</span>
-                  <Badge className={statusColors[vehicle.estado] || ''}>
-                    {statusLabels[vehicle.estado] || vehicle.estado}
-                  </Badge>
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-muted">
+                    <Gauge className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Kilometraje</p>
+                    <p className="font-medium">{vehicle.kilometraje.toLocaleString()} km</p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Precio</span>
-                  <span className="font-semibold text-lg">
-                    ${vehicle.precio.toLocaleString()}
-                  </span>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-muted">
+                    <Calendar className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Año</p>
+                    <p className="font-medium">{vehicle.ano}</p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Kilometraje</span>
-                  <span className="font-medium">
-                    {vehicle.kilometraje.toLocaleString()} km
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Año</span>
-                  <span className="font-medium">{vehicle.ano}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Marca</span>
-                  <span className="font-medium">{vehicle.marca}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Modelo</span>
-                  <span className="font-medium">{vehicle.modelo}</span>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-muted">
+                    <Car className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Marca / Modelo</p>
+                    <p className="font-medium">{vehicle.marca} {vehicle.modelo}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {vehicle.descripcion && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Descripción</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm whitespace-pre-wrap">{vehicle.descripcion}</p>
-                </CardContent>
-              </Card>
-            )}
-
+            {/* Creator Info */}
             <Card>
-              <CardHeader>
-                <CardTitle>Información del Sistema</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Creado por</span>
-                  <span className="font-medium">{vehicle.createdBy.name}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Fecha de creación</span>
-                  <span className="font-medium">
-                    {new Date(vehicle.createdAt).toLocaleDateString('es-ES')}
-                  </span>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-muted">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="text-sm">
+                    <p className="text-muted-foreground">Registrado por</p>
+                    <p className="font-medium">{vehicle.createdBy.name}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {new Date(vehicle.createdAt).toLocaleDateString('es-ES')}
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Propiedades */}
-        {properties.length > 0 && (
+        {/* Description */}
+        {vehicle.descripcion && (
           <Card>
-            <CardHeader>
-              <CardTitle>Propiedades Adicionales</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Descripción</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {vehicle.descripcion}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Additional Properties */}
+        {properties.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Características</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {properties.map((prop) => (
-                  <div key={prop.id} className="space-y-1">
-                    <div className="text-sm font-medium text-muted-foreground">
-                      {prop.field.nombre}
-                    </div>
-                    <div className="text-base">
-                      {prop.field.tipo === 'DATE' && prop.valor
-                        ? new Date(prop.valor).toLocaleDateString('es-ES')
-                        : prop.field.tipo === 'BOOLEAN'
-                        ? prop.valor === 'true'
-                          ? 'Sí'
-                          : prop.valor === 'false'
-                          ? 'No'
-                          : prop.valor
-                        : prop.valor}
+                  <div key={prop.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    <div>
+                      <p className="text-xs text-muted-foreground">{prop.field.nombre}</p>
+                      <p className="font-medium">
+                        {prop.field.tipo === 'DATE' && prop.valor
+                          ? new Date(prop.valor).toLocaleDateString('es-ES')
+                          : prop.field.tipo === 'BOOLEAN'
+                          ? prop.valor === 'true'
+                            ? 'Sí'
+                            : prop.valor === 'false'
+                            ? 'No'
+                            : prop.valor
+                          : prop.valor}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -361,57 +366,37 @@ export default function VehicleDetailPage() {
           </Card>
         )}
 
-        {/* Documentos */}
+        {/* Documents */}
         {documents.length > 0 && (
           <Card>
-            <CardHeader>
-              <CardTitle>Documentos Asociados</CardTitle>
-              <CardDescription>
-                {documents.length} documento(s) registrado(s)
-              </CardDescription>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Documentos</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {documents.map((doc) => (
-                  <div
+                  <button
                     key={doc.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
+                    onClick={() => handleViewDocument(doc)}
+                    className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors text-left"
                   >
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium text-sm">{doc.nombre}</p>
-                        <p className="text-xs text-muted-foreground">{doc.tipo}</p>
-                        {doc.fechaVencimiento && (
-                          <p className="text-xs text-muted-foreground">
-                            Vence: {new Date(doc.fechaVencimiento).toLocaleDateString('es-ES')}
-                          </p>
-                        )}
-                      </div>
+                    <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{doc.nombre}</p>
+                      <p className="text-xs text-muted-foreground">{doc.tipo}</p>
+                      {doc.fechaVencimiento && (
+                        <p className="text-xs text-muted-foreground">
+                          Vence: {new Date(doc.fechaVencimiento).toLocaleDateString('es-ES')}
+                        </p>
+                      )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleViewDocument(doc)}
-                    >
-                      Ver
-                    </Button>
-                  </div>
+                  </button>
                 ))}
               </div>
             </CardContent>
           </Card>
         )}
       </div>
-
-      <VehicleDialog
-        open={editDialogOpen}
-        onClose={() => {
-          setEditDialogOpen(false)
-          fetchVehicle()
-        }}
-        vehicle={vehicle}
-      />
 
       <VehicleDocumentsDialog
         open={documentsDialogOpen}
@@ -439,4 +424,3 @@ export default function VehicleDetailPage() {
     </MainLayout>
   )
 }
-
