@@ -161,6 +161,41 @@ router.post('/vehicle-images', authenticate, upload.array('images', 10), async (
   }
 });
 
+// Upload logo - guarda en DB como base64
+router.post('/upload-logo', authenticate, upload.single('image'), async (req: AuthRequest, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se subió ningún archivo' });
+    }
+
+    // Only allow images for logo
+    if (!req.file.mimetype.startsWith('image/')) {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ error: 'Solo se permiten imágenes para el logo' });
+    }
+
+    // Convertir archivo a base64
+    const base64Content = await fileToBase64(req.file.path);
+    const base64String = `data:${req.file.mimetype};base64,${base64Content}`;
+
+    // Eliminar archivo temporal después de convertirlo
+    fs.unlinkSync(req.file.path);
+
+    res.json({
+      url: base64String, // Return base64 directly as the URL
+      filename: req.file.filename,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+    });
+  } catch (error: any) {
+    // Limpiar archivo si hay error
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    res.status(500).json({ error: error.message || 'Error al subir logo' });
+  }
+});
+
 // Servir archivos estáticos
 router.use('/uploads', express.static(uploadsDir));
 

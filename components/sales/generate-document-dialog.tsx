@@ -21,7 +21,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/error-handler'
 import api from '@/lib/api'
-import { Download, FileText } from 'lucide-react'
+import { Download, FileText, Save, Check } from 'lucide-react'
 
 interface Template {
   id: string
@@ -47,6 +47,8 @@ export function GenerateDocumentDialog({ open, onClose, sale }: GenerateDocument
   const [generatedDocument, setGeneratedDocument] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [loadingTemplates, setLoadingTemplates] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [savedToSale, setSavedToSale] = useState(false)
 
   useEffect(() => {
     if (open && sale) {
@@ -129,7 +131,7 @@ export function GenerateDocumentDialog({ open, onClose, sale }: GenerateDocument
     if (!printWindow) return
 
     const templateName = templates.find(t => t.id === selectedTemplate)?.nombre || 'documento'
-    
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -153,15 +155,56 @@ export function GenerateDocumentDialog({ open, onClose, sale }: GenerateDocument
       </html>
     `)
     printWindow.document.close()
-    
+
     setTimeout(() => {
       printWindow.print()
     }, 250)
   }
 
+  const handleSaveToSale = async () => {
+    if (!generatedDocument || !sale) return
+
+    setSaving(true)
+    try {
+      const templateName = templates.find(t => t.id === selectedTemplate)?.nombre || 'Documento'
+      const fileName = `${templateName}_${new Date().toISOString().split('T')[0]}.txt`
+
+      // Create base64 content for the document
+      const base64Content = btoa(unescape(encodeURIComponent(generatedDocument)))
+      const base64String = `data:text/plain;base64,${base64Content}`
+
+      await api.post('/sale-documents', {
+        saleId: sale.id,
+        nombre: fileName,
+        tipo: 'CONTRATO',
+        categoria: 'contrato',
+        archivo: fileName,
+        contenido: base64String,
+        mimetype: 'text/plain',
+        descripcion: `Documento generado desde plantilla "${templateName}"`,
+      })
+
+      setSavedToSale(true)
+      toast({
+        title: 'Guardado',
+        description: 'Documento guardado en la venta',
+      })
+    } catch (error: any) {
+      const errorMessage = getErrorMessage(error, 'Error al guardar documento')
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleClose = () => {
     setGeneratedDocument(null)
     setSelectedTemplate('')
+    setSavedToSale(false)
     onClose()
   }
 
@@ -227,19 +270,39 @@ export function GenerateDocumentDialog({ open, onClose, sale }: GenerateDocument
                 </div>
               </div>
 
-              <DialogFooter className="flex gap-2">
+              <DialogFooter className="flex flex-wrap gap-2">
                 <Button type="button" variant="outline" onClick={handleClose}>
                   Cerrar
                 </Button>
-                <Button type="button" variant="outline" onClick={handleGenerate}>
+                <Button type="button" variant="outline" onClick={handleGenerate} disabled={saving}>
                   <FileText className="mr-2 h-4 w-4" />
                   Regenerar
+                </Button>
+                <Button
+                  type="button"
+                  variant={savedToSale ? "secondary" : "default"}
+                  onClick={handleSaveToSale}
+                  disabled={saving || savedToSale}
+                >
+                  {savedToSale ? (
+                    <>
+                      <Check className="mr-2 h-4 w-4" />
+                      Guardado
+                    </>
+                  ) : saving ? (
+                    'Guardando...'
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Guardar en Venta
+                    </>
+                  )}
                 </Button>
                 <Button type="button" variant="outline" onClick={handleDownloadAsPDF}>
                   <FileText className="mr-2 h-4 w-4" />
                   Imprimir/PDF
                 </Button>
-                <Button type="button" onClick={handleDownload}>
+                <Button type="button" variant="outline" onClick={handleDownload}>
                   <Download className="mr-2 h-4 w-4" />
                   Descargar TXT
                 </Button>

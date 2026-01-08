@@ -30,7 +30,8 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import api from '@/lib/api'
-import { Plus, MoreHorizontal, Edit, Trash2, FileText, ShoppingCart, Car, Search, ArrowUp, ArrowDown } from 'lucide-react'
+import { Plus, MoreHorizontal, Edit, Trash2, FileText, ShoppingCart, Car, Search, ArrowUp, ArrowDown, Eye } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { SaleDialog } from '@/components/sales/sale-dialog'
 import { GenerateDocumentDialog } from '@/components/sales/generate-document-dialog'
 import { cn } from '@/lib/utils'
@@ -95,6 +96,7 @@ const stageConfig: Record<string, { label: string; className: string }> = {
 const stageOrder = ['INTERESADO', 'PRUEBA', 'NEGOCIACION', 'VENDIDO', 'CANCELADO']
 
 export default function SalesPage() {
+  const router = useRouter()
   const [sales, setSales] = useState<Sale[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>('all')
@@ -248,7 +250,7 @@ export default function SalesPage() {
               {pipelineCount} en pipeline, {closedCount} cerrada{closedCount !== 1 ? 's' : ''}
             </p>
           </div>
-          <Button variant="outline" onClick={handleCreate}>
+          <Button onClick={() => router.push('/sales/new')}>
             <Plus className="mr-1.5 h-4 w-4" />
             Nueva Venta
           </Button>
@@ -357,7 +359,7 @@ export default function SalesPage() {
               <ShoppingCart className="h-8 w-8 text-muted-foreground/50" />
             </div>
             <p className="text-muted-foreground mb-4">No hay ventas registradas</p>
-            <Button onClick={handleCreate} variant="outline">
+            <Button onClick={() => router.push('/sales/new')}>
               <Plus className="mr-1.5 h-4 w-4" />
               Crear primera venta
             </Button>
@@ -390,7 +392,11 @@ export default function SalesPage() {
                   const stage = stageConfig[sale.etapa] || { label: sale.etapa, className: '' }
 
                   return (
-                    <TableRow key={sale.id}>
+                    <TableRow
+                      key={sale.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => router.push(`/sales/${sale.id}`)}
+                    >
                       <TableCell>
                         <div className="min-w-0">
                           <p className="font-medium truncate">{sale.client.nombre}</p>
@@ -432,7 +438,7 @@ export default function SalesPage() {
                           {sale.vendedor.name}
                         </span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -441,6 +447,10 @@ export default function SalesPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => router.push(`/sales/${sale.id}`)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Ver detalles
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleEdit(sale)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Editar

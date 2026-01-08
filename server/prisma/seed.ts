@@ -4,11 +4,13 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Iniciando seed...');
+  console.log('🌱 Starting seed...\n');
 
-  // Limpiar la base de datos (en orden por dependencias)
-  console.log('🧹 Limpiando base de datos...');
+  // Clean the database (in dependency order)
+  console.log('🧹 Cleaning database...');
   await prisma.notification.deleteMany();
+  await prisma.salePaymentMethod.deleteMany();
+  await prisma.saleDocument.deleteMany();
   await prisma.testDrive.deleteMany();
   await prisma.sale.deleteMany();
   await prisma.vehicleProperty.deleteMany();
@@ -18,60 +20,197 @@ async function main() {
   await prisma.vehiclePropertyField.deleteMany();
   await prisma.documentTemplate.deleteMany();
   await prisma.paymentMethod.deleteMany();
+  await prisma.appConfig.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.tenantRegistration.deleteMany();
+  await prisma.tenant.deleteMany();
+  await prisma.superAdmin.deleteMany();
 
-  // Crear usuarios de prueba
   const hashedPassword = await bcrypt.hash('password123', 10);
+  const superAdminPassword = await bcrypt.hash('superadmin123', 10);
 
-  const admin = await prisma.user.create({
+  // ============================================
+  // Create Super Admin
+  // ============================================
+  console.log('👑 Creating Super Admin...');
+  const superAdmin = await prisma.superAdmin.create({
     data: {
-      email: 'admin@autocrm.com',
-      password: hashedPassword,
-      name: 'Administrador',
-      role: 'ADMIN',
+      email: 'superadmin@autocrm.com',
+      password: superAdminPassword,
+      name: 'Super Administrator',
     },
   });
 
-  const vendedor = await prisma.user.create({
+  // ============================================
+  // Create Tenants
+  // ============================================
+  console.log('🏢 Creating Tenants...');
+
+  // Tenant 1: Autos del Norte
+  const tenant1 = await prisma.tenant.create({
     data: {
-      email: 'vendedor@autocrm.com',
+      name: 'Autos del Norte',
+      subdomain: 'autosdelnorte',
+      email: 'info@autosdelnorte.com',
+      phone: '+598 99 123 456',
+      status: 'ACTIVE',
+      plan: 'PROFESSIONAL',
+      maxUsers: 10,
+      maxVehicles: 200,
+      approvedAt: new Date(),
+    },
+  });
+
+  // Tenant 2: Montevideo Motors
+  const tenant2 = await prisma.tenant.create({
+    data: {
+      name: 'Montevideo Motors',
+      subdomain: 'montevideomotors',
+      email: 'ventas@montevideomotors.com',
+      phone: '+598 98 456 789',
+      status: 'ACTIVE',
+      plan: 'STARTER',
+      maxUsers: 5,
+      maxVehicles: 100,
+      approvedAt: new Date(),
+    },
+  });
+
+  // Tenant 3: Premium Cars (pending)
+  const tenant3 = await prisma.tenant.create({
+    data: {
+      name: 'Premium Cars',
+      subdomain: 'premiumcars',
+      email: 'contact@premiumcars.com',
+      status: 'PENDING',
+      plan: 'FREE',
+      maxUsers: 5,
+      maxVehicles: 100,
+    },
+  });
+
+  // ============================================
+  // Create App Configs for each tenant
+  // ============================================
+  console.log('⚙️  Creating App Configs...');
+
+  await prisma.appConfig.create({
+    data: {
+      nombreEmpresa: 'Autos del Norte',
+      colorPrimario: '#2563eb',
+      colorSecundario: '#1e40af',
+      tenantId: tenant1.id,
+    },
+  });
+
+  await prisma.appConfig.create({
+    data: {
+      nombreEmpresa: 'Montevideo Motors',
+      colorPrimario: '#059669',
+      colorSecundario: '#047857',
+      tenantId: tenant2.id,
+    },
+  });
+
+  // ============================================
+  // Create Users for Tenant 1 (Autos del Norte)
+  // ============================================
+  console.log('👤 Creating users for Autos del Norte...');
+
+  const admin1 = await prisma.user.create({
+    data: {
+      email: 'admin@autosdelnorte.com',
+      password: hashedPassword,
+      name: 'Carlos Administrador',
+      role: 'ADMIN',
+      tenantId: tenant1.id,
+    },
+  });
+
+  const vendedor1 = await prisma.user.create({
+    data: {
+      email: 'juan@autosdelnorte.com',
       password: hashedPassword,
       name: 'Juan Pérez',
       role: 'VENDEDOR',
+      tenantId: tenant1.id,
     },
   });
 
   const vendedor2 = await prisma.user.create({
     data: {
-      email: 'maria@autocrm.com',
+      email: 'maria@autosdelnorte.com',
       password: hashedPassword,
       name: 'María González',
       role: 'VENDEDOR',
+      tenantId: tenant1.id,
     },
   });
 
-  const asistente = await prisma.user.create({
+  const asistente1 = await prisma.user.create({
     data: {
-      email: 'asistente@autocrm.com',
+      email: 'asistente@autosdelnorte.com',
       password: hashedPassword,
-      name: 'Carlos López',
+      name: 'Pedro López',
       role: 'ASISTENTE',
+      tenantId: tenant1.id,
     },
   });
 
-  // Crear métodos de pago
+  // ============================================
+  // Create Users for Tenant 2 (Montevideo Motors)
+  // ============================================
+  console.log('👤 Creating users for Montevideo Motors...');
+
+  const admin2 = await prisma.user.create({
+    data: {
+      email: 'admin@montevideomotors.com',
+      password: hashedPassword,
+      name: 'Ana Directora',
+      role: 'ADMIN',
+      tenantId: tenant2.id,
+    },
+  });
+
+  const vendedor3 = await prisma.user.create({
+    data: {
+      email: 'ventas@montevideomotors.com',
+      password: hashedPassword,
+      name: 'Roberto Vendedor',
+      role: 'VENDEDOR',
+      tenantId: tenant2.id,
+    },
+  });
+
+  // ============================================
+  // Create Payment Methods for each tenant
+  // ============================================
+  console.log('💳 Creating payment methods...');
+
   await prisma.paymentMethod.createMany({
     data: [
-      { nombre: 'Efectivo', activo: true },
-      { nombre: 'Transferencia Bancaria', activo: true },
-      { nombre: 'Financiación', activo: true },
-      { nombre: 'Tarjeta de Crédito', activo: true },
-      { nombre: 'Cheque', activo: true },
+      { nombre: 'Efectivo', activo: true, tenantId: tenant1.id },
+      { nombre: 'Transferencia Bancaria', activo: true, tenantId: tenant1.id },
+      { nombre: 'Financiación', activo: true, tenantId: tenant1.id },
+      { nombre: 'Tarjeta de Crédito', activo: true, tenantId: tenant1.id },
+      { nombre: 'Cheque', activo: true, tenantId: tenant1.id },
     ],
   });
 
-  // Crear vehículos con datos más realistas (Uruguay)
-  const vehicles = await Promise.all([
+  await prisma.paymentMethod.createMany({
+    data: [
+      { nombre: 'Efectivo', activo: true, tenantId: tenant2.id },
+      { nombre: 'Transferencia', activo: true, tenantId: tenant2.id },
+      { nombre: 'Financiamiento Propio', activo: true, tenantId: tenant2.id },
+    ],
+  });
+
+  // ============================================
+  // Create Vehicles for Tenant 1
+  // ============================================
+  console.log('🚗 Creating vehicles for Autos del Norte...');
+
+  const vehiclesT1 = await Promise.all([
     prisma.vehicle.create({
       data: {
         marca: 'Toyota',
@@ -81,8 +220,9 @@ async function main() {
         moneda: 'USD',
         kilometraje: 12000,
         estado: 'DISPONIBLE',
-        descripcion: 'Sedan familiar en excelente estado. Único dueño, service oficial al día. Incluye cámara de retroceso, sensor de estacionamiento y climatizador automático.',
-        createdById: admin.id,
+        descripcion: 'Sedan familiar en excelente estado. Único dueño, service oficial al día.',
+        createdById: admin1.id,
+        tenantId: tenant1.id,
       },
     }),
     prisma.vehicle.create({
@@ -94,8 +234,9 @@ async function main() {
         moneda: 'USD',
         kilometraje: 28000,
         estado: 'DISPONIBLE',
-        descripcion: 'Compacto muy económico. Motor 1.6 MSI. Excelente para ciudad. Aire acondicionado, dirección asistida, cierre centralizado.',
-        createdById: vendedor.id,
+        descripcion: 'Compacto muy económico. Motor 1.6 MSI.',
+        createdById: vendedor1.id,
+        tenantId: tenant1.id,
       },
     }),
     prisma.vehicle.create({
@@ -107,8 +248,9 @@ async function main() {
         moneda: 'USD',
         kilometraje: 5000,
         estado: 'DISPONIBLE',
-        descripcion: 'Prácticamente nuevo, modelo 2024. Pantalla táctil 8", Android Auto y Apple CarPlay. Garantía de fábrica vigente.',
-        createdById: vendedor.id,
+        descripcion: 'Prácticamente nuevo, modelo 2024. Garantía de fábrica vigente.',
+        createdById: vendedor1.id,
+        tenantId: tenant1.id,
       },
     }),
     prisma.vehicle.create({
@@ -120,73 +262,9 @@ async function main() {
         moneda: 'USD',
         kilometraje: 45000,
         estado: 'RESERVADO',
-        descripcion: 'Pickup doble cabina 4x4. Motor 3.2 diesel. Cubrecaja, estribos, faros antiniebla. Ideal para trabajo y uso diario.',
-        createdById: admin.id,
-      },
-    }),
-    prisma.vehicle.create({
-      data: {
-        marca: 'Fiat',
-        modelo: 'Cronos Drive',
-        ano: 2023,
-        precio: 19500,
-        moneda: 'USD',
-        kilometraje: 18000,
-        estado: 'DISPONIBLE',
-        descripcion: 'Sedan compacto muy económico. Motor 1.3 Firefly. Bajo consumo de combustible. Excelente relación precio-calidad.',
-        createdById: vendedor2.id,
-      },
-    }),
-    prisma.vehicle.create({
-      data: {
-        marca: 'Renault',
-        modelo: 'Duster Iconic',
-        ano: 2021,
-        precio: 28000,
-        moneda: 'USD',
-        kilometraje: 52000,
-        estado: 'DISPONIBLE',
-        descripcion: 'SUV espaciosa con excelente altura del piso. Motor 1.6. Climatizador, cámara trasera, control crucero.',
-        createdById: vendedor.id,
-      },
-    }),
-    prisma.vehicle.create({
-      data: {
-        marca: 'Peugeot',
-        modelo: '208 Allure',
-        ano: 2023,
-        precio: 24000,
-        moneda: 'USD',
-        kilometraje: 8000,
-        estado: 'DISPONIBLE',
-        descripcion: 'Diseño moderno y deportivo. Motor 1.2 PureTech turbo. i-Cockpit 3D, cámara 180°, sensores delanteros y traseros.',
-        createdById: vendedor2.id,
-      },
-    }),
-    prisma.vehicle.create({
-      data: {
-        marca: 'Nissan',
-        modelo: 'Kicks Exclusive',
-        ano: 2022,
-        precio: 29500,
-        moneda: 'USD',
-        kilometraje: 35000,
-        estado: 'MANTENIMIENTO',
-        descripcion: 'SUV compacta premium. Techo panorámico, asientos de cuero, pantalla 8". En mantenimiento preventivo de 30.000 km.',
-        createdById: admin.id,
-      },
-    }),
-    prisma.vehicle.create({
-      data: {
-        marca: 'Toyota',
-        modelo: 'Hilux SRV',
-        ano: 2020,
-        precio: 42000,
-        moneda: 'USD',
-        kilometraje: 78000,
-        estado: 'VENDIDO',
-        descripcion: 'Pickup referencia del mercado. Motor 2.8 diesel, caja automática. Cubierta rígida, cámara de retroceso.',
-        createdById: vendedor.id,
+        descripcion: 'Pickup doble cabina 4x4. Motor 3.2 diesel.',
+        createdById: admin1.id,
+        tenantId: tenant1.id,
       },
     }),
     prisma.vehicle.create({
@@ -198,14 +276,83 @@ async function main() {
         moneda: 'USD',
         kilometraje: 15000,
         estado: 'DISPONIBLE',
-        descripcion: 'SUV premium japonesa. Motor 1.5 turbo CVT. Cuero, sunroof, Honda Sensing completo. Garantía vigente.',
+        descripcion: 'SUV premium japonesa. Motor 1.5 turbo CVT.',
         createdById: vendedor2.id,
+        tenantId: tenant1.id,
+      },
+    }),
+    prisma.vehicle.create({
+      data: {
+        marca: 'Toyota',
+        modelo: 'Hilux SRV',
+        ano: 2020,
+        precio: 42000,
+        moneda: 'USD',
+        kilometraje: 78000,
+        estado: 'VENDIDO',
+        descripcion: 'Pickup referencia del mercado. Motor 2.8 diesel.',
+        createdById: vendedor1.id,
+        tenantId: tenant1.id,
       },
     }),
   ]);
 
-  // Crear clientes con datos uruguayos
-  const clientes = await Promise.all([
+  // ============================================
+  // Create Vehicles for Tenant 2
+  // ============================================
+  console.log('🚗 Creating vehicles for Montevideo Motors...');
+
+  const vehiclesT2 = await Promise.all([
+    prisma.vehicle.create({
+      data: {
+        marca: 'Fiat',
+        modelo: 'Cronos Drive',
+        ano: 2023,
+        precio: 19500,
+        moneda: 'USD',
+        kilometraje: 18000,
+        estado: 'DISPONIBLE',
+        descripcion: 'Sedan compacto muy económico.',
+        createdById: admin2.id,
+        tenantId: tenant2.id,
+      },
+    }),
+    prisma.vehicle.create({
+      data: {
+        marca: 'Renault',
+        modelo: 'Duster Iconic',
+        ano: 2021,
+        precio: 28000,
+        moneda: 'USD',
+        kilometraje: 52000,
+        estado: 'DISPONIBLE',
+        descripcion: 'SUV espaciosa con excelente altura del piso.',
+        createdById: vendedor3.id,
+        tenantId: tenant2.id,
+      },
+    }),
+    prisma.vehicle.create({
+      data: {
+        marca: 'Peugeot',
+        modelo: '208 Allure',
+        ano: 2023,
+        precio: 24000,
+        moneda: 'USD',
+        kilometraje: 8000,
+        estado: 'DISPONIBLE',
+        descripcion: 'Diseño moderno y deportivo. Motor 1.2 PureTech turbo.',
+        createdById: vendedor3.id,
+        tenantId: tenant2.id,
+      },
+    }),
+  ]);
+
+  // ============================================
+  // Create Clients for Tenant 1
+  // ============================================
+  console.log('👥 Creating clients for Autos del Norte...');
+
+  const clientsT1 = await Promise.all([
     prisma.client.create({
       data: {
         nombre: 'Martín Rodríguez',
@@ -213,8 +360,9 @@ async function main() {
         telefono: '099 123 456',
         direccion: 'Av. 18 de Julio 1234, Montevideo',
         interes: 'SUV',
-        notas: 'Busca vehículo familiar. Presupuesto hasta USD 35.000. Interesado en financiación.',
-        createdById: vendedor.id,
+        notas: 'Busca vehículo familiar. Presupuesto hasta USD 35.000.',
+        createdById: vendedor1.id,
+        tenantId: tenant1.id,
       },
     }),
     prisma.client.create({
@@ -224,8 +372,9 @@ async function main() {
         telefono: '098 456 789',
         direccion: 'Rambla República de México 5678, Pocitos',
         interes: 'Sedan',
-        notas: 'Primera compra. Busca auto económico para trabajo. Prefiere automático.',
-        createdById: vendedor.id,
+        notas: 'Primera compra. Busca auto económico.',
+        createdById: vendedor1.id,
+        tenantId: tenant1.id,
       },
     }),
     prisma.client.create({
@@ -235,10 +384,19 @@ async function main() {
         telefono: '091 234 567',
         direccion: 'Calle Colonia 890, Centro',
         interes: 'Pickup',
-        notas: 'Empresario, necesita pickup para trabajo. Puede pagar al contado.',
+        notas: 'Empresario, necesita pickup para trabajo.',
         createdById: vendedor2.id,
+        tenantId: tenant1.id,
       },
     }),
+  ]);
+
+  // ============================================
+  // Create Clients for Tenant 2
+  // ============================================
+  console.log('👥 Creating clients for Montevideo Motors...');
+
+  const clientsT2 = await Promise.all([
     prisma.client.create({
       data: {
         nombre: 'Carolina Silva',
@@ -246,8 +404,9 @@ async function main() {
         telefono: '094 567 890',
         direccion: 'Av. Rivera 2345, Carrasco',
         interes: 'Hatchback',
-        notas: 'Busca segundo auto para la familia. Quiere algo compacto y moderno.',
-        createdById: asistente.id,
+        notas: 'Busca segundo auto para la familia.',
+        createdById: vendedor3.id,
+        tenantId: tenant2.id,
       },
     }),
     prisma.client.create({
@@ -257,21 +416,27 @@ async function main() {
         telefono: '095 678 901',
         direccion: 'Bulevar Artigas 567, Tres Cruces',
         interes: 'SUV',
-        notas: 'Tiene permuta. Honda CRV 2018. Interesado en upgrade.',
-        createdById: vendedor.id,
+        notas: 'Tiene permuta. Honda CRV 2018.',
+        createdById: admin2.id,
+        tenantId: tenant2.id,
       },
     }),
   ]);
 
-  // Crear ventas en diferentes etapas
+  // ============================================
+  // Create Sales for Tenant 1
+  // ============================================
+  console.log('💰 Creating sales for Autos del Norte...');
+
   await prisma.sale.create({
     data: {
       etapa: 'INTERESADO',
-      precioFinal: vehicles[2].precio,
-      notas: 'Cliente consultó por WhatsApp. Agendamos visita para ver el vehículo.',
-      vehicleId: vehicles[2].id,
-      clientId: clientes[1].id,
-      vendedorId: vendedor.id,
+      precioFinal: vehiclesT1[2].precio,
+      notas: 'Cliente consultó por WhatsApp. Agendamos visita.',
+      vehicleId: vehiclesT1[2].id,
+      clientId: clientsT1[1].id,
+      vendedorId: vendedor1.id,
+      tenantId: tenant1.id,
     },
   });
 
@@ -279,10 +444,11 @@ async function main() {
     data: {
       etapa: 'NEGOCIACION',
       precioFinal: 30000,
-      notas: 'Cliente ofreció USD 30.000. Estamos negociando precio final.',
-      vehicleId: vehicles[0].id,
-      clientId: clientes[0].id,
-      vendedorId: vendedor.id,
+      notas: 'Cliente ofreció USD 30.000. Negociando precio final.',
+      vehicleId: vehiclesT1[0].id,
+      clientId: clientsT1[0].id,
+      vendedorId: vendedor1.id,
+      tenantId: tenant1.id,
     },
   });
 
@@ -290,10 +456,11 @@ async function main() {
     data: {
       etapa: 'PRUEBA',
       precioFinal: 44000,
-      notas: 'Cliente realizó test drive. Muy interesado, preparando documentación.',
-      vehicleId: vehicles[3].id,
-      clientId: clientes[2].id,
+      notas: 'Cliente realizó test drive. Muy interesado.',
+      vehicleId: vehiclesT1[3].id,
+      clientId: clientsT1[2].id,
       vendedorId: vendedor2.id,
+      tenantId: tenant1.id,
     },
   });
 
@@ -302,51 +469,67 @@ async function main() {
       etapa: 'VENDIDO',
       precioFinal: 40000,
       notas: 'Venta completada. Cliente muy satisfecho.',
-      vehicleId: vehicles[8].id, // Toyota Hilux (VENDIDO)
-      clientId: clientes[4].id,
-      vendedorId: vendedor.id,
+      vehicleId: vehiclesT1[5].id,
+      clientId: clientsT1[2].id,
+      vendedorId: vendedor1.id,
+      tenantId: tenant1.id,
     },
   });
 
-  // Crear test drives
+  // ============================================
+  // Create Sales for Tenant 2
+  // ============================================
+  console.log('💰 Creating sales for Montevideo Motors...');
+
+  await prisma.sale.create({
+    data: {
+      etapa: 'INTERESADO',
+      precioFinal: vehiclesT2[1].precio,
+      notas: 'Cliente interesado en la Duster.',
+      vehicleId: vehiclesT2[1].id,
+      clientId: clientsT2[1].id,
+      vendedorId: vendedor3.id,
+      tenantId: tenant2.id,
+    },
+  });
+
+  // ============================================
+  // Create Test Drives
+  // ============================================
+  console.log('🚙 Creating test drives...');
   const today = new Date();
+
   await prisma.testDrive.create({
     data: {
-      fecha: new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000), // mañana
+      fecha: new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000),
       hora: '10:00',
       estado: 'CONFIRMADO',
-      notas: 'Cliente viene con su esposa. Tiene 30 minutos disponibles.',
-      vehicleId: vehicles[5].id, // Renault Duster
-      clientId: clientes[0].id,
-      vendedorId: vendedor.id,
+      notas: 'Cliente viene con su esposa.',
+      vehicleId: vehiclesT1[4].id,
+      clientId: clientsT1[0].id,
+      vendedorId: vendedor1.id,
+      tenantId: tenant1.id,
     },
   });
 
   await prisma.testDrive.create({
     data: {
-      fecha: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000), // pasado mañana
+      fecha: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000),
       hora: '15:30',
       estado: 'PENDIENTE',
-      notas: 'Primera visita del cliente. Mostrar también otros modelos similares.',
-      vehicleId: vehicles[9].id, // Honda HR-V
-      clientId: clientes[3].id,
-      vendedorId: vendedor2.id,
+      notas: 'Primera visita del cliente.',
+      vehicleId: vehiclesT2[2].id,
+      clientId: clientsT2[0].id,
+      vendedorId: vendedor3.id,
+      tenantId: tenant2.id,
     },
   });
 
-  await prisma.testDrive.create({
-    data: {
-      fecha: new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000),
-      hora: '11:00',
-      estado: 'CONFIRMADO',
-      notas: 'Segundo test drive. Ya probó el Polo, ahora quiere probar el Cronos.',
-      vehicleId: vehicles[4].id, // Fiat Cronos
-      clientId: clientes[1].id,
-      vendedorId: vendedor.id,
-    },
-  });
+  // ============================================
+  // Create Vehicle Property Fields for each tenant
+  // ============================================
+  console.log('📋 Creating vehicle property fields...');
 
-  // Crear propiedades predefinidas para vehículos
   const propiedadesPredefinidas = [
     { nombre: 'Patente', tipo: 'TEXT', orden: 1 },
     { nombre: 'Número de Chasis', tipo: 'TEXT', orden: 2 },
@@ -355,11 +538,10 @@ async function main() {
     { nombre: 'Combustible', tipo: 'TEXT', orden: 5 },
     { nombre: 'Transmisión', tipo: 'TEXT', orden: 6 },
     { nombre: 'Cantidad de Puertas', tipo: 'NUMBER', orden: 7 },
-    { nombre: 'Fecha de Primera Matriculación', tipo: 'DATE', orden: 8 },
-    { nombre: 'Aire Acondicionado', tipo: 'BOOLEAN', orden: 9 },
-    { nombre: 'Dirección Asistida', tipo: 'BOOLEAN', orden: 10 },
+    { nombre: 'Aire Acondicionado', tipo: 'BOOLEAN', orden: 8 },
   ];
 
+  // Create for tenant 1
   for (const prop of propiedadesPredefinidas) {
     await prisma.vehiclePropertyField.create({
       data: {
@@ -368,105 +550,132 @@ async function main() {
         esPredefinida: true,
         orden: prop.orden,
         activa: true,
+        tenantId: tenant1.id,
       },
     });
   }
 
-  // Agregar algunas propiedades a vehículos
-  const propFields = await prisma.vehiclePropertyField.findMany();
-  const patenteField = propFields.find(f => f.nombre === 'Patente');
-  const colorField = propFields.find(f => f.nombre === 'Color');
-  const combustibleField = propFields.find(f => f.nombre === 'Combustible');
-  const transmisionField = propFields.find(f => f.nombre === 'Transmisión');
-
-  if (patenteField && colorField && combustibleField && transmisionField) {
-    // Toyota Corolla
-    await prisma.vehicleProperty.createMany({
-      data: [
-        { vehicleId: vehicles[0].id, fieldId: patenteField.id, valor: 'ABC 1234' },
-        { vehicleId: vehicles[0].id, fieldId: colorField.id, valor: 'Gris Plata' },
-        { vehicleId: vehicles[0].id, fieldId: combustibleField.id, valor: 'Nafta' },
-        { vehicleId: vehicles[0].id, fieldId: transmisionField.id, valor: 'Automática CVT' },
-      ],
-    });
-
-    // VW Polo
-    await prisma.vehicleProperty.createMany({
-      data: [
-        { vehicleId: vehicles[1].id, fieldId: patenteField.id, valor: 'DEF 5678' },
-        { vehicleId: vehicles[1].id, fieldId: colorField.id, valor: 'Blanco Candy' },
-        { vehicleId: vehicles[1].id, fieldId: combustibleField.id, valor: 'Nafta' },
-        { vehicleId: vehicles[1].id, fieldId: transmisionField.id, valor: 'Manual 5 velocidades' },
-      ],
-    });
-
-    // Ford Ranger
-    await prisma.vehicleProperty.createMany({
-      data: [
-        { vehicleId: vehicles[3].id, fieldId: patenteField.id, valor: 'GHI 9012' },
-        { vehicleId: vehicles[3].id, fieldId: colorField.id, valor: 'Negro Ébano' },
-        { vehicleId: vehicles[3].id, fieldId: combustibleField.id, valor: 'Diesel' },
-        { vehicleId: vehicles[3].id, fieldId: transmisionField.id, valor: 'Automática 6 velocidades' },
-      ],
+  // Create for tenant 2
+  for (const prop of propiedadesPredefinidas) {
+    await prisma.vehiclePropertyField.create({
+      data: {
+        nombre: prop.nombre,
+        tipo: prop.tipo,
+        esPredefinida: true,
+        orden: prop.orden,
+        activa: true,
+        tenantId: tenant2.id,
+      },
     });
   }
 
-  // Crear notificaciones
+  // ============================================
+  // Create Notifications
+  // ============================================
+  console.log('🔔 Creating notifications...');
+
   await prisma.notification.createMany({
     data: [
       {
         titulo: 'Bienvenido a AutoCRM',
-        mensaje: 'Sistema configurado correctamente. Comienza a gestionar tu concesionaria.',
+        mensaje: 'Tu cuenta de Autos del Norte está lista.',
         tipo: 'SUCCESS',
-        userId: admin.id,
+        userId: admin1.id,
+        tenantId: tenant1.id,
       },
       {
         titulo: 'Nueva consulta recibida',
-        mensaje: 'Martín Rodríguez consultó por el Toyota Corolla XEI.',
+        mensaje: 'Martín Rodríguez consultó por el Toyota Corolla.',
         tipo: 'INFO',
-        userId: vendedor.id,
+        userId: vendedor1.id,
+        tenantId: tenant1.id,
       },
       {
         titulo: 'Test drive confirmado',
         mensaje: 'El test drive de mañana a las 10:00 ha sido confirmado.',
         tipo: 'INFO',
-        userId: vendedor.id,
+        userId: vendedor1.id,
+        tenantId: tenant1.id,
       },
       {
-        titulo: 'Venta próxima a cerrar',
-        mensaje: 'La venta de la Ford Ranger está en etapa de documentación.',
-        tipo: 'WARNING',
-        userId: vendedor2.id,
+        titulo: 'Bienvenido a AutoCRM',
+        mensaje: 'Tu cuenta de Montevideo Motors está lista.',
+        tipo: 'SUCCESS',
+        userId: admin2.id,
+        tenantId: tenant2.id,
       },
     ],
   });
 
-  console.log('✅ Seed completado exitosamente!');
-  console.log('\n📋 Usuarios creados:');
+  // ============================================
+  // Create a pending registration
+  // ============================================
+  console.log('📝 Creating pending registration...');
+
+  await prisma.tenantRegistration.create({
+    data: {
+      companyName: 'Carros Express',
+      subdomain: 'carrosexpress',
+      email: 'info@carrosexpress.com',
+      phone: '+598 97 111 222',
+      userName: 'Fernando Rojas',
+      password: hashedPassword,
+      status: 'PENDING',
+    },
+  });
+
+  // ============================================
+  // Summary
+  // ============================================
+  console.log('\n✅ Seed completed successfully!\n');
+  console.log('════════════════════════════════════════════════════════════');
+  console.log('                        SUPER ADMIN');
+  console.log('════════════════════════════════════════════════════════════');
+  console.log('   Email: superadmin@autocrm.com');
+  console.log('   Password: superadmin123');
+  console.log('   Access: /super-admin');
+  console.log('');
+  console.log('════════════════════════════════════════════════════════════');
+  console.log('                    TENANT 1: Autos del Norte');
+  console.log('════════════════════════════════════════════════════════════');
+  console.log('   Subdomain: autosdelnorte.localhost:3000');
+  console.log('   Status: ACTIVE | Plan: PROFESSIONAL');
+  console.log('   ');
   console.log('   👤 Admin:');
-  console.log('      Email: admin@autocrm.com');
+  console.log('      Email: admin@autosdelnorte.com');
   console.log('      Password: password123');
-  console.log('   👤 Vendedor 1:');
-  console.log('      Email: vendedor@autocrm.com');
+  console.log('   ');
+  console.log('   👤 Vendedor:');
+  console.log('      Email: juan@autosdelnorte.com');
   console.log('      Password: password123');
-  console.log('   👤 Vendedor 2:');
-  console.log('      Email: maria@autocrm.com');
+  console.log('');
+  console.log('════════════════════════════════════════════════════════════');
+  console.log('                  TENANT 2: Montevideo Motors');
+  console.log('════════════════════════════════════════════════════════════');
+  console.log('   Subdomain: montevideomotors.localhost:3000');
+  console.log('   Status: ACTIVE | Plan: STARTER');
+  console.log('   ');
+  console.log('   👤 Admin:');
+  console.log('      Email: admin@montevideomotors.com');
   console.log('      Password: password123');
-  console.log('   👤 Asistente:');
-  console.log('      Email: asistente@autocrm.com');
-  console.log('      Password: password123');
-  console.log('\n📦 Datos de ejemplo creados:');
-  console.log('   - 10 vehículos (varios estados)');
-  console.log('   - 5 clientes');
-  console.log('   - 4 ventas (diferentes etapas)');
-  console.log('   - 3 test drives agendados');
-  console.log('   - 10 propiedades de vehículo predefinidas');
-  console.log('   - 5 métodos de pago');
+  console.log('');
+  console.log('════════════════════════════════════════════════════════════');
+  console.log('                      PENDING ITEMS');
+  console.log('════════════════════════════════════════════════════════════');
+  console.log('   📌 1 pending tenant (Premium Cars)');
+  console.log('   📌 1 pending registration (Carros Express)');
+  console.log('');
+  console.log('════════════════════════════════════════════════════════════');
+  console.log('                      DATA SUMMARY');
+  console.log('════════════════════════════════════════════════════════════');
+  console.log('   Tenant 1: 6 vehicles, 3 clients, 4 sales, 1 test drive');
+  console.log('   Tenant 2: 3 vehicles, 2 clients, 1 sale, 1 test drive');
+  console.log('');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Error en seed:', e);
+    console.error('❌ Seed error:', e);
     process.exit(1);
   })
   .finally(async () => {

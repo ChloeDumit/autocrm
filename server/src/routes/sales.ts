@@ -2,6 +2,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { tenantMiddleware } from '../middleware/tenant';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -14,12 +15,21 @@ const saleSchema = z.object({
   notas: z.string().optional(),
 });
 
+// Apply tenant middleware to all routes
+router.use(tenantMiddleware);
+
 // Get all sales
 router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
+    if (!req.tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
     const { etapa, vendedorId } = req.query;
-    
-    const where: any = {};
+
+    const where: any = {
+      tenantId: req.tenantId,
+    };
     if (etapa) {
       where.etapa = etapa;
     }
@@ -41,15 +51,23 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
 
     res.json(sales);
   } catch (error) {
+    console.error('Error fetching sales:', error);
     res.status(500).json({ error: 'Error fetching sales' });
   }
 });
 
 // Get single sale
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
-    const sale = await prisma.sale.findUnique({
-      where: { id: req.params.id },
+    if (!req.tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
+    const sale = await prisma.sale.findFirst({
+      where: {
+        id: req.params.id,
+        tenantId: req.tenantId,
+      },
       include: {
         vehicle: {
           include: {
@@ -69,6 +87,13 @@ router.get('/:id', authenticate, async (req, res) => {
           orderBy: { createdAt: 'desc' },
         },
         documents: {
+          include: {
+            salePaymentMethod: {
+              include: {
+                paymentMethod: true,
+              },
+            },
+          },
           orderBy: { createdAt: 'desc' },
         },
       },
@@ -80,6 +105,7 @@ router.get('/:id', authenticate, async (req, res) => {
 
     res.json(sale);
   } catch (error) {
+    console.error('Error fetching sale:', error);
     res.status(500).json({ error: 'Error fetching sale' });
   }
 });
@@ -87,13 +113,42 @@ router.get('/:id', authenticate, async (req, res) => {
 // Create sale
 router.post('/', authenticate, async (req: AuthRequest, res) => {
   try {
+    if (!req.tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
     const data = saleSchema.parse(req.body);
+
+    // Verify vehicle belongs to tenant
+    const vehicle = await prisma.vehicle.findFirst({
+      where: {
+        id: data.vehicleId,
+        tenantId: req.tenantId,
+      },
+    });
+
+    if (!vehicle) {
+      return res.status(404).json({ error: 'Vehicle not found' });
+    }
+
+    // Verify client belongs to tenant
+    const client = await prisma.client.findFirst({
+      where: {
+        id: data.clientId,
+        tenantId: req.tenantId,
+      },
+    });
+
+    if (!client) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
 
     const sale = await prisma.sale.create({
       data: {
         ...data,
         etapa: data.etapa || 'INTERESADO',
         vendedorId: req.userId!,
+        tenantId: req.tenantId,
       },
       include: {
         vehicle: true,
@@ -111,6 +166,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
         mensaje: `Se inició una venta para ${sale.client.nombre} - ${sale.vehicle.marca} ${sale.vehicle.modelo}`,
         tipo: 'INFO',
         userId: req.userId!,
+        tenantId: req.tenantId,
       },
     });
 
@@ -119,6 +175,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
+    console.error('Error creating sale:', error);
     res.status(500).json({ error: 'Error creating sale' });
   }
 });
@@ -126,6 +183,22 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
 // Update sale
 router.put('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
+    if (!req.tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
+    // Verify sale belongs to tenant
+    const existingSale = await prisma.sale.findFirst({
+      where: {
+        id: req.params.id,
+        tenantId: req.tenantId,
+      },
+    });
+
+    if (!existingSale) {
+      return res.status(404).json({ error: 'Sale not found' });
+    }
+
     const data = saleSchema.partial().parse(req.body);
 
     const sale = await prisma.sale.update({
@@ -154,6 +227,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
           mensaje: `Venta completada: ${sale.client.nombre} - ${sale.vehicle.marca} ${sale.vehicle.modelo}`,
           tipo: 'SUCCESS',
           userId: req.userId!,
+          tenantId: req.tenantId,
         },
       });
     }
@@ -163,6 +237,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
+    console.error('Error updating sale:', error);
     res.status(500).json({ error: 'Error updating sale' });
   }
 });
@@ -170,15 +245,31 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
 // Delete sale
 router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
+    if (!req.tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
+    // Verify sale belongs to tenant
+    const existingSale = await prisma.sale.findFirst({
+      where: {
+        id: req.params.id,
+        tenantId: req.tenantId,
+      },
+    });
+
+    if (!existingSale) {
+      return res.status(404).json({ error: 'Sale not found' });
+    }
+
     await prisma.sale.delete({
       where: { id: req.params.id },
     });
 
     res.json({ message: 'Sale deleted successfully' });
   } catch (error) {
+    console.error('Error deleting sale:', error);
     res.status(500).json({ error: 'Error deleting sale' });
   }
 });
 
 export default router;
-

@@ -2,6 +2,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { authenticate, AuthRequest, requireRole } from '../middleware/auth';
+import { tenantMiddleware } from '../middleware/tenant';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -18,11 +19,21 @@ const propertyValueSchema = z.object({
   valor: z.string(),
 });
 
+// Apply tenant middleware to all routes
+router.use(tenantMiddleware);
+
 // Get all property fields (predefined and custom)
 router.get('/fields', authenticate, async (req: AuthRequest, res) => {
   try {
+    if (!req.tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
     const fields = await prisma.vehiclePropertyField.findMany({
-      where: { activa: true },
+      where: {
+        tenantId: req.tenantId,
+        activa: true,
+      },
       orderBy: [
         { esPredefinida: 'desc' },
         { orden: 'asc' },
@@ -32,6 +43,7 @@ router.get('/fields', authenticate, async (req: AuthRequest, res) => {
 
     res.json(fields);
   } catch (error) {
+    console.error('Error fetching property fields:', error);
     res.status(500).json({ error: 'Error fetching property fields' });
   }
 });
@@ -39,6 +51,22 @@ router.get('/fields', authenticate, async (req: AuthRequest, res) => {
 // Get property fields for a specific vehicle
 router.get('/vehicle/:vehicleId', authenticate, async (req: AuthRequest, res) => {
   try {
+    if (!req.tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
+    // Verify vehicle belongs to tenant
+    const vehicle = await prisma.vehicle.findFirst({
+      where: {
+        id: req.params.vehicleId,
+        tenantId: req.tenantId,
+      },
+    });
+
+    if (!vehicle) {
+      return res.status(404).json({ error: 'Vehicle not found' });
+    }
+
     const properties = await prisma.vehicleProperty.findMany({
       where: { vehicleId: req.params.vehicleId },
       include: {
@@ -53,6 +81,7 @@ router.get('/vehicle/:vehicleId', authenticate, async (req: AuthRequest, res) =>
 
     res.json(properties);
   } catch (error) {
+    console.error('Error fetching vehicle properties:', error);
     res.status(500).json({ error: 'Error fetching vehicle properties' });
   }
 });
@@ -60,11 +89,18 @@ router.get('/vehicle/:vehicleId', authenticate, async (req: AuthRequest, res) =>
 // Create custom property field (only ADMIN)
 router.post('/fields', authenticate, requireRole('ADMIN'), async (req: AuthRequest, res) => {
   try {
+    if (!req.tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
     const data = propertyFieldSchema.parse(req.body);
-    
-    // Obtener el máximo orden para campos custom
+
+    // Get max order for custom fields in this tenant
     const maxOrder = await prisma.vehiclePropertyField.findFirst({
-      where: { esPredefinida: false },
+      where: {
+        tenantId: req.tenantId,
+        esPredefinida: false,
+      },
       orderBy: { orden: 'desc' },
     });
 
@@ -75,6 +111,7 @@ router.post('/fields', authenticate, requireRole('ADMIN'), async (req: AuthReque
         esPredefinida: false,
         orden: data.orden ?? (maxOrder ? maxOrder.orden + 1 : 100),
         activa: data.activa ?? true,
+        tenantId: req.tenantId,
       },
     });
 
@@ -83,6 +120,7 @@ router.post('/fields', authenticate, requireRole('ADMIN'), async (req: AuthReque
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
+    console.error('Error creating property field:', error);
     res.status(500).json({ error: 'Error creating property field' });
   }
 });
@@ -90,8 +128,15 @@ router.post('/fields', authenticate, requireRole('ADMIN'), async (req: AuthReque
 // Update property field (only ADMIN, and only custom fields)
 router.put('/fields/:id', authenticate, requireRole('ADMIN'), async (req: AuthRequest, res) => {
   try {
-    const field = await prisma.vehiclePropertyField.findUnique({
-      where: { id: req.params.id },
+    if (!req.tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
+    const field = await prisma.vehiclePropertyField.findFirst({
+      where: {
+        id: req.params.id,
+        tenantId: req.tenantId,
+      },
     });
 
     if (!field) {
@@ -114,15 +159,23 @@ router.put('/fields/:id', authenticate, requireRole('ADMIN'), async (req: AuthRe
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
+    console.error('Error updating property field:', error);
     res.status(500).json({ error: 'Error updating property field' });
   }
 });
 
 // Delete property field (only ADMIN, and only custom fields)
-router.delete('/fields/:id', authenticate, requireRole('ADMIN'), async (req, res) => {
+router.delete('/fields/:id', authenticate, requireRole('ADMIN'), async (req: AuthRequest, res) => {
   try {
-    const field = await prisma.vehiclePropertyField.findUnique({
-      where: { id: req.params.id },
+    if (!req.tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
+    const field = await prisma.vehiclePropertyField.findFirst({
+      where: {
+        id: req.params.id,
+        tenantId: req.tenantId,
+      },
     });
 
     if (!field) {
@@ -139,6 +192,7 @@ router.delete('/fields/:id', authenticate, requireRole('ADMIN'), async (req, res
 
     res.json({ message: 'Property field deleted successfully' });
   } catch (error) {
+    console.error('Error deleting property field:', error);
     res.status(500).json({ error: 'Error deleting property field' });
   }
 });
@@ -146,37 +200,56 @@ router.delete('/fields/:id', authenticate, requireRole('ADMIN'), async (req, res
 // Set property value for a vehicle
 router.post('/vehicle/:vehicleId', authenticate, requireRole('ADMIN', 'VENDEDOR'), async (req: AuthRequest, res) => {
   try {
+    if (!req.tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
     const { vehicleId } = req.params;
-    const { properties } = req.body; // Array of { fieldId, valor }
+    const { properties } = req.body;
 
     if (!Array.isArray(properties)) {
       return res.status(400).json({ error: 'Properties must be an array' });
     }
 
-    // Verificar que el vehículo existe
-    const vehicle = await prisma.vehicle.findUnique({
-      where: { id: vehicleId },
+    // Verify vehicle belongs to tenant
+    const vehicle = await prisma.vehicle.findFirst({
+      where: {
+        id: vehicleId,
+        tenantId: req.tenantId,
+      },
     });
 
     if (!vehicle) {
       return res.status(404).json({ error: 'Vehicle not found' });
     }
 
-    // Eliminar propiedades existentes del vehículo
+    // Delete existing properties for this vehicle
     await prisma.vehicleProperty.deleteMany({
       where: { vehicleId },
     });
 
-    // Crear nuevas propiedades
+    // Create new properties
     const createdProperties = await Promise.all(
       properties.map(async (prop: { fieldId: string; valor: string }) => {
-        const propertyValueSchema = z.object({
+        const propertyValueSchemaLocal = z.object({
           fieldId: z.string(),
           valor: z.string(),
         });
-        
-        const data = propertyValueSchema.parse(prop);
-        
+
+        const data = propertyValueSchemaLocal.parse(prop);
+
+        // Verify field belongs to tenant
+        const field = await prisma.vehiclePropertyField.findFirst({
+          where: {
+            id: data.fieldId,
+            tenantId: req.tenantId,
+          },
+        });
+
+        if (!field) {
+          throw new Error(`Property field ${data.fieldId} not found`);
+        }
+
         return prisma.vehicleProperty.upsert({
           where: {
             vehicleId_fieldId: {
@@ -201,11 +274,9 @@ router.post('/vehicle/:vehicleId', authenticate, requireRole('ADMIN', 'VENDEDOR'
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
+    console.error('Error setting vehicle properties:', error);
     res.status(500).json({ error: 'Error setting vehicle properties' });
   }
 });
 
 export default router;
-
-
-

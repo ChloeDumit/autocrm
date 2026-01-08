@@ -96,7 +96,7 @@ export default function PaymentMethodsPage() {
               Gestiona las formas de pago y sus documentos
             </p>
           </div>
-          <Button variant="outline" onClick={handleCreate}>
+          <Button onClick={handleCreate}>
             <Plus className="mr-2 h-4 w-4" />
             Nueva Forma de Pago
           </Button>

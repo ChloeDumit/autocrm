@@ -18,7 +18,6 @@ import { ArrowLeft, Edit, Trash2, FileText, Share2, MoreHorizontal, ShoppingCart
 import { Badge } from '@/components/ui/badge'
 import { VehicleDocumentsDialog } from '@/components/vehicles/vehicle-documents-dialog'
 import { SocialMediaDialog } from '@/components/vehicles/social-media-dialog'
-import { SaleDialog } from '@/components/sales/sale-dialog'
 import { ImageCarousel } from '@/components/vehicles/image-carousel'
 import { cn } from '@/lib/utils'
 
@@ -59,7 +58,6 @@ export default function VehicleDetailPage() {
   const [loading, setLoading] = useState(true)
   const [documentsDialogOpen, setDocumentsDialogOpen] = useState(false)
   const [socialDialogOpen, setSocialDialogOpen] = useState(false)
-  const [saleDialogOpen, setSaleDialogOpen] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -206,7 +204,7 @@ export default function VehicleDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setSaleDialogOpen(true)}>
+            <Button variant="outline" onClick={() => router.push(`/sales/new?vehicleId=${vehicle.id}`)}>
               <ShoppingCart className="mr-2 h-4 w-4" />
               Crear Venta
             </Button>
@@ -411,15 +409,6 @@ export default function VehicleDetailPage() {
         open={socialDialogOpen}
         onClose={() => setSocialDialogOpen(false)}
         vehicleId={vehicle.id}
-      />
-
-      <SaleDialog
-        open={saleDialogOpen}
-        onClose={() => {
-          setSaleDialogOpen(false)
-          fetchVehicle()
-        }}
-        initialVehicleId={vehicle.id}
       />
     </MainLayout>
   )

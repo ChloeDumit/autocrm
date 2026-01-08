@@ -2,6 +2,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { authenticate, AuthRequest, requireRole } from '../middleware/auth';
+import { tenantMiddleware } from '../middleware/tenant';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -15,12 +16,21 @@ const clientSchema = z.object({
   notas: z.string().optional(),
 });
 
+// Apply tenant middleware to all routes
+router.use(tenantMiddleware);
+
 // Get all clients
 router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
+    if (!req.tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
     const { search } = req.query;
-    
-    const where: any = {};
+
+    const where: any = {
+      tenantId: req.tenantId,
+    };
     if (search) {
       where.OR = [
         { nombre: { contains: search as string, mode: 'insensitive' } },
@@ -54,15 +64,23 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
 
     res.json(clients);
   } catch (error) {
+    console.error('Error fetching clients:', error);
     res.status(500).json({ error: 'Error fetching clients' });
   }
 });
 
 // Get single client
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
-    const client = await prisma.client.findUnique({
-      where: { id: req.params.id },
+    if (!req.tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
+    const client = await prisma.client.findFirst({
+      where: {
+        id: req.params.id,
+        tenantId: req.tenantId,
+      },
       include: {
         createdBy: {
           select: { name: true, email: true },
@@ -100,6 +118,7 @@ router.get('/:id', authenticate, async (req, res) => {
 
     res.json(client);
   } catch (error) {
+    console.error('Error fetching client:', error);
     res.status(500).json({ error: 'Error fetching client' });
   }
 });
@@ -107,6 +126,10 @@ router.get('/:id', authenticate, async (req, res) => {
 // Create client
 router.post('/', authenticate, async (req: AuthRequest, res) => {
   try {
+    if (!req.tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
     const data = clientSchema.parse(req.body);
 
     const client = await prisma.client.create({
@@ -114,6 +137,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
         ...data,
         email: data.email || undefined,
         createdById: req.userId!,
+        tenantId: req.tenantId,
       },
       include: {
         createdBy: {
@@ -127,6 +151,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
+    console.error('Error creating client:', error);
     res.status(500).json({ error: 'Error creating client' });
   }
 });
@@ -134,6 +159,22 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
 // Update client
 router.put('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
+    if (!req.tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
+    // Verify client belongs to tenant
+    const existingClient = await prisma.client.findFirst({
+      where: {
+        id: req.params.id,
+        tenantId: req.tenantId,
+      },
+    });
+
+    if (!existingClient) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+
     const data = clientSchema.partial().parse(req.body);
 
     const client = await prisma.client.update({
@@ -154,22 +195,39 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
+    console.error('Error updating client:', error);
     res.status(500).json({ error: 'Error updating client' });
   }
 });
 
 // Delete client
-router.delete('/:id', authenticate, requireRole('ADMIN', 'VENDEDOR'), async (req, res) => {
+router.delete('/:id', authenticate, requireRole('ADMIN', 'VENDEDOR'), async (req: AuthRequest, res) => {
   try {
+    if (!req.tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
+    // Verify client belongs to tenant
+    const existingClient = await prisma.client.findFirst({
+      where: {
+        id: req.params.id,
+        tenantId: req.tenantId,
+      },
+    });
+
+    if (!existingClient) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+
     await prisma.client.delete({
       where: { id: req.params.id },
     });
 
     res.json({ message: 'Client deleted successfully' });
   } catch (error) {
+    console.error('Error deleting client:', error);
     res.status(500).json({ error: 'Error deleting client' });
   }
 });
 
 export default router;
-

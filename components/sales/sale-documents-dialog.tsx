@@ -26,24 +26,41 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/error-handler'
 import api from '@/lib/api'
-import { Upload, X, FileText } from 'lucide-react'
+import { Upload, X, FileText, CreditCard, Eye, Trash2, Edit2 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 
 const documentSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido'),
-  tipo: z.enum(['CONTRATO', 'RECIBO', 'TRANSFERENCIA', 'OTRO']),
+  tipo: z.enum(['CONTRATO', 'COMPROBANTE_PAGO', 'ENTREGA', 'IDENTIFICACION', 'OTRO']),
+  categoria: z.enum(['contrato', 'pago', 'entrega', 'identificacion']).optional(),
   descripcion: z.string().optional(),
+  salePaymentMethodId: z.string().optional(),
 })
 
 type DocumentFormData = z.infer<typeof documentSchema>
+
+interface PaymentMethod {
+  id: string
+  nombre: string
+}
+
+interface SalePaymentMethod {
+  id: string
+  monto?: number
+  paymentMethod: PaymentMethod
+}
 
 interface SaleDocument {
   id: string
   nombre: string
   tipo: string
+  categoria?: string
   archivo: string
   descripcion?: string
   contenido?: string
   mimetype?: string
+  salePaymentMethodId?: string
+  salePaymentMethod?: SalePaymentMethod
 }
 
 interface SaleDocumentsDialogProps {
@@ -57,6 +74,7 @@ export function SaleDocumentsDialog({ open, onClose, saleId }: SaleDocumentsDial
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [documents, setDocuments] = useState<SaleDocument[]>([])
+  const [paymentMethods, setPaymentMethods] = useState<SalePaymentMethod[]>([])
   const [selectedDocument, setSelectedDocument] = useState<SaleDocument | null>(null)
   const [showForm, setShowForm] = useState(false)
 
@@ -72,13 +90,16 @@ export function SaleDocumentsDialog({ open, onClose, saleId }: SaleDocumentsDial
     defaultValues: {
       nombre: '',
       tipo: 'OTRO',
+      categoria: undefined,
       descripcion: '',
+      salePaymentMethodId: undefined,
     },
   })
 
   useEffect(() => {
     if (open && saleId) {
       fetchDocuments()
+      fetchPaymentMethods()
     }
   }, [open, saleId])
 
@@ -89,6 +110,16 @@ export function SaleDocumentsDialog({ open, onClose, saleId }: SaleDocumentsDial
       setDocuments(res.data)
     } catch (error) {
       console.error('Error fetching documents:', error)
+    }
+  }
+
+  const fetchPaymentMethods = async () => {
+    if (!saleId) return
+    try {
+      const res = await api.get(`/sales/${saleId}`)
+      setPaymentMethods(res.data.paymentMethods || [])
+    } catch (error) {
+      console.error('Error fetching payment methods:', error)
     }
   }
 
@@ -127,9 +158,16 @@ export function SaleDocumentsDialog({ open, onClose, saleId }: SaleDocumentsDial
         mimetype = selectedDocument.mimetype || ''
       }
 
+      // Derive categoria from tipo if not set
+      const categoria = data.categoria || getCategoriaFromTipo(data.tipo)
+
       if (selectedDocument) {
         await api.put(`/sale-documents/${selectedDocument.id}`, {
-          ...data,
+          nombre: data.nombre,
+          tipo: data.tipo,
+          categoria,
+          descripcion: data.descripcion,
+          salePaymentMethodId: data.salePaymentMethodId || null,
           archivo,
           contenido,
           mimetype,
@@ -140,7 +178,11 @@ export function SaleDocumentsDialog({ open, onClose, saleId }: SaleDocumentsDial
         })
       } else {
         await api.post('/sale-documents', {
-          ...data,
+          nombre: data.nombre,
+          tipo: data.tipo,
+          categoria,
+          descripcion: data.descripcion,
+          salePaymentMethodId: data.salePaymentMethodId || null,
           archivo,
           contenido,
           mimetype,
@@ -193,7 +235,9 @@ export function SaleDocumentsDialog({ open, onClose, saleId }: SaleDocumentsDial
     reset({
       nombre: doc.nombre,
       tipo: doc.tipo as any,
+      categoria: doc.categoria as any,
       descripcion: doc.descripcion || '',
+      salePaymentMethodId: doc.salePaymentMethodId || undefined,
     })
     setShowForm(true)
   }
@@ -203,9 +247,22 @@ export function SaleDocumentsDialog({ open, onClose, saleId }: SaleDocumentsDial
     reset({
       nombre: '',
       tipo: 'OTRO',
+      categoria: undefined,
       descripcion: '',
+      salePaymentMethodId: undefined,
     })
     setShowForm(true)
+  }
+
+  const getCategoriaFromTipo = (tipo: string): string => {
+    const mapping: Record<string, string> = {
+      CONTRATO: 'contrato',
+      COMPROBANTE_PAGO: 'pago',
+      ENTREGA: 'entrega',
+      IDENTIFICACION: 'identificacion',
+      OTRO: 'contrato',
+    }
+    return mapping[tipo] || 'contrato'
   }
 
   const handleViewDocument = async (doc: SaleDocument) => {
@@ -237,8 +294,9 @@ export function SaleDocumentsDialog({ open, onClose, saleId }: SaleDocumentsDial
   const getDocumentTypeLabel = (tipo: string) => {
     const types: Record<string, string> = {
       CONTRATO: 'Contrato',
-      RECIBO: 'Recibo',
-      TRANSFERENCIA: 'Transferencia',
+      COMPROBANTE_PAGO: 'Comprobante de Pago',
+      ENTREGA: 'Entrega',
+      IDENTIFICACION: 'Identificación',
       OTRO: 'Otro',
     }
     return types[tipo] || tipo
@@ -275,43 +333,55 @@ export function SaleDocumentsDialog({ open, onClose, saleId }: SaleDocumentsDial
                   {documents.map((doc) => (
                     <div
                       key={doc.id}
-                      className="flex items-center justify-between p-3 border rounded-lg"
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{doc.nombre}</span>
-                          <span className="text-xs text-muted-foreground">
-                            ({getDocumentTypeLabel(doc.tipo)})
-                          </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="font-medium truncate">{doc.nombre}</span>
+                          <Badge variant="secondary" className="text-xs">
+                            {getDocumentTypeLabel(doc.tipo)}
+                          </Badge>
+                          {doc.salePaymentMethod && (
+                            <Badge variant="outline" className="text-xs">
+                              <CreditCard className="h-3 w-3 mr-1" />
+                              {doc.salePaymentMethod.paymentMethod.nombre}
+                            </Badge>
+                          )}
                         </div>
                         {doc.descripcion && (
-                          <p className="text-sm text-muted-foreground mt-1">
+                          <p className="text-sm text-muted-foreground mt-1 truncate">
                             {doc.descripcion}
                           </p>
                         )}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1 ml-2">
                         <Button
-                          variant="outline"
-                          size="sm"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={() => handleViewDocument(doc)}
+                          title="Ver documento"
                         >
-                          Ver
+                          <Eye className="h-4 w-4" />
                         </Button>
                         <Button
-                          variant="outline"
-                          size="sm"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={() => handleEdit(doc)}
+                          title="Editar"
                         >
-                          Editar
+                          <Edit2 className="h-4 w-4" />
                         </Button>
                         <Button
-                          variant="outline"
-                          size="sm"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
                           onClick={() => handleDelete(doc.id)}
+                          title="Eliminar"
                         >
-                          <X className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -340,16 +410,43 @@ export function SaleDocumentsDialog({ open, onClose, saleId }: SaleDocumentsDial
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="CONTRATO">Contrato</SelectItem>
-                      <SelectItem value="RECIBO">Recibo</SelectItem>
-                      <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
+                      <SelectItem value="COMPROBANTE_PAGO">Comprobante de Pago</SelectItem>
+                      <SelectItem value="ENTREGA">Documento de Entrega</SelectItem>
+                      <SelectItem value="IDENTIFICACION">Identificación</SelectItem>
                       <SelectItem value="OTRO">Otro</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
+              {paymentMethods.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="salePaymentMethodId">Vincular a Forma de Pago (opcional)</Label>
+                  <Select
+                    value={watch('salePaymentMethodId') || ''}
+                    onValueChange={(value) => setValue('salePaymentMethodId', value || undefined)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sin vincular" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Sin vincular</SelectItem>
+                      {paymentMethods.map((pm) => (
+                        <SelectItem key={pm.id} value={pm.id}>
+                          {pm.paymentMethod.nombre}
+                          {pm.monto ? ` - $${pm.monto.toLocaleString()}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Vincula este documento a una forma de pago específica (ej: comprobante de transferencia)
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-2">
-                <Label htmlFor="saleDocumentFile">Archivo *</Label>
+                <Label htmlFor="saleDocumentFile">Archivo {!selectedDocument && '*'}</Label>
                 <Input
                   id="saleDocumentFile"
                   type="file"
@@ -361,7 +458,7 @@ export function SaleDocumentsDialog({ open, onClose, saleId }: SaleDocumentsDial
                 )}
                 {selectedDocument && (
                   <p className="text-sm text-muted-foreground">
-                    Archivo actual: {selectedDocument.nombre}
+                    Archivo actual: {selectedDocument.nombre} (deja vacío para mantener)
                   </p>
                 )}
               </div>
@@ -371,7 +468,8 @@ export function SaleDocumentsDialog({ open, onClose, saleId }: SaleDocumentsDial
                 <Textarea
                   id="descripcion"
                   {...register('descripcion')}
-                  rows={3}
+                  rows={2}
+                  placeholder="Descripción opcional del documento..."
                 />
               </div>
 

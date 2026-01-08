@@ -10,6 +10,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============== ENUMS ==============
+
 enum UserRole {
   ADMIN
   VENDEDOR
@@ -31,6 +33,86 @@ enum SaleStage {
   CANCELADO
 }
 
+enum TenantStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum SubscriptionPlan {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ============== MULTI-TENANCY MODELS ==============
+
+model Tenant {
+  id          String           @id @default(cuid())
+  name        String
+  subdomain   String           @unique
+  status      TenantStatus     @default(PENDING)
+  plan        SubscriptionPlan @default(FREE)
+  email       String
+  phone       String?
+  maxUsers    Int              @default(5)
+  maxVehicles Int              @default(100)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  approvedAt  DateTime?
+
+  // Relations to all tenant-scoped models
+  users                 User[]
+  appConfig             AppConfig?
+  vehicles              Vehicle[]
+  clients               Client[]
+  sales                 Sale[]
+  testDrives            TestDrive[]
+  notifications         Notification[]
+  documentTemplates     DocumentTemplate[]
+  paymentMethods        PaymentMethod[]
+  vehiclePropertyFields VehiclePropertyField[]
+
+  @@map("tenants")
+}
+
+model SuperAdmin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("super_admins")
+}
+
+model TenantRegistration {
+  id              String             @id @default(cuid())
+  companyName     String
+  subdomain       String             @unique
+  email           String
+  phone           String?
+  password        String             // Hashed password for the admin user
+  userName        String
+  status          RegistrationStatus @default(PENDING)
+  rejectionReason String?
+  createdAt       DateTime           @default(now())
+  reviewedAt      DateTime?
+
+  @@map("tenant_registrations")
+}
+
+// ============== USER MODEL ==============
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -40,14 +122,25 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  sales         Sale[]
-  testDrives    TestDrive[]
-  notifications Notification[]
-  createdVehicles Vehicle[] @relation("VehicleCreator")
-  createdClients Client[] @relation("ClientCreator")
+  // Password reset
+  resetToken       String?   @unique
+  resetTokenExpiry DateTime?
 
+  // Tenant relation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  sales           Sale[]
+  testDrives      TestDrive[]
+  notifications   Notification[]
+  createdVehicles Vehicle[]      @relation("VehicleCreator")
+  createdClients  Client[]       @relation("ClientCreator")
+
+  @@index([tenantId])
   @@map("users")
 }
+
+// ============== VEHICLE MODELS ==============
 
 model Vehicle {
   id          String        @id @default(cuid())
@@ -55,46 +148,56 @@ model Vehicle {
   modelo      String
   ano         Int
   precio      Float
-  moneda      String        @default("USD") // USD, ARS, EUR, etc.
+  moneda      String        @default("USD")
   kilometraje Int
   estado      VehicleStatus @default(DISPONIBLE)
   descripcion String?
-  imagen      String?       // URL principal o base64 (para compatibilidad)
-  imagenes    String[]      @default([]) // Array de URLs o base64 de imágenes
+  imagen      String?
+  imagenes    String[]      @default([])
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   createdById String
   createdBy   User          @relation("VehicleCreator", fields: [createdById], references: [id])
+
+  // Tenant relation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   sales      Sale[]
   testDrives TestDrive[]
   documents  VehicleDocument[]
   properties VehicleProperty[]
 
+  @@index([tenantId])
   @@map("vehicles")
 }
 
 model VehiclePropertyField {
-  id          String   @id @default(cuid())
-  nombre      String   // Nombre de la propiedad (ej: "Patente", "Chasis", "Motor")
-  tipo        String   @default("TEXT") // TEXT, NUMBER, DATE, BOOLEAN
-  esPredefinida Boolean @default(false) // Si es una propiedad predefinida del sistema
-  orden       Int      @default(0) // Orden de visualización
-  activa      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  nombre        String
+  tipo          String   @default("TEXT")
+  esPredefinida Boolean  @default(false)
+  orden         Int      @default(0)
+  activa        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Tenant relation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   values VehicleProperty[]
 
-  @@unique([nombre, esPredefinida])
+  @@unique([tenantId, nombre, esPredefinida])
+  @@index([tenantId])
   @@map("vehicle_property_fields")
 }
 
 model VehicleProperty {
-  id          String   @id @default(cuid())
-  valor       String   @db.Text // Valor de la propiedad (puede ser texto, número, fecha, etc.)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  valor     String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   vehicleId String
   vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
@@ -105,6 +208,26 @@ model VehicleProperty {
   @@unique([vehicleId, fieldId])
   @@map("vehicle_properties")
 }
+
+model VehicleDocument {
+  id               String    @id @default(cuid())
+  nombre           String
+  tipo             String
+  archivo          String
+  contenido        String?   @db.Text
+  mimetype         String?
+  descripcion      String?
+  fechaVencimiento DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("vehicle_documents")
+}
+
+// ============== CLIENT MODEL ==============
 
 model Client {
   id          String   @id @default(cuid())
@@ -119,11 +242,18 @@ model Client {
   createdById String
   createdBy   User     @relation("ClientCreator", fields: [createdById], references: [id])
 
+  // Tenant relation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   sales      Sale[]
   testDrives TestDrive[]
 
+  @@index([tenantId])
   @@map("clients")
 }
+
+// ============== SALE MODELS ==============
 
 model Sale {
   id          String    @id @default(cuid())
@@ -142,16 +272,21 @@ model Sale {
   vendedorId String
   vendedor   User   @relation(fields: [vendedorId], references: [id])
 
+  // Tenant relation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   paymentMethods SalePaymentMethod[]
   documents      SaleDocument[]
 
+  @@index([tenantId])
   @@map("sales")
 }
 
 model SalePaymentMethod {
   id        String   @id @default(cuid())
-  monto     Float?   // Monto pagado con este método (opcional)
-  notas     String?  // Notas adicionales (ej: número de cheque, cuotas, etc.)
+  monto     Float?
+  notas     String?
   createdAt DateTime @default(now())
 
   saleId String
@@ -160,16 +295,19 @@ model SalePaymentMethod {
   paymentMethodId String
   paymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id])
 
+  documents SaleDocument[]
+
   @@map("sale_payment_methods")
 }
 
 model SaleDocument {
   id          String   @id @default(cuid())
   nombre      String
-  tipo        String   // CONTRATO, RECIBO, TRANSFERENCIA, OTRO
-  archivo     String   // URL, ruta o base64 del archivo
-  contenido   String?  @db.Text // Contenido base64 del archivo
-  mimetype    String?  // Tipo MIME del archivo
+  tipo        String   // CONTRATO, COMPROBANTE_PAGO, ENTREGA, IDENTIFICACION, OTRO
+  categoria   String?  // For grouping: contrato, pago, entrega, identificacion
+  archivo     String
+  contenido   String?  @db.Text
+  mimetype    String?
   descripcion String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -177,15 +315,21 @@ model SaleDocument {
   saleId String
   sale   Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
+  // Optional link to specific payment method (for payment proofs)
+  salePaymentMethodId String?
+  salePaymentMethod   SalePaymentMethod? @relation(fields: [salePaymentMethodId], references: [id], onDelete: SetNull)
+
   @@map("sale_documents")
 }
+
+// ============== TEST DRIVE MODEL ==============
 
 model TestDrive {
   id        String   @id @default(cuid())
   fecha     DateTime
   hora      String
   notas     String?
-  estado    String   @default("PENDIENTE") // PENDIENTE, CONFIRMADO, COMPLETADO, CANCELADO
+  estado    String   @default("PENDIENTE")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -198,73 +342,81 @@ model TestDrive {
   vendedorId String
   vendedor   User   @relation(fields: [vendedorId], references: [id])
 
+  // Tenant relation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
   @@map("test_drives")
 }
+
+// ============== NOTIFICATION MODEL ==============
 
 model Notification {
   id        String   @id @default(cuid())
   titulo    String
   mensaje   String
   leida     Boolean  @default(false)
-  tipo      String   // INFO, WARNING, SUCCESS, ERROR
+  tipo      String
   createdAt DateTime @default(now())
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Tenant relation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
   @@map("notifications")
 }
+
+// ============== DOCUMENT TEMPLATE MODEL ==============
 
 model DocumentTemplate {
   id          String   @id @default(cuid())
   nombre      String
-  contenido   String   // Template con placeholders como {{cliente_nombre}}, {{vehiculo_marca}}, etc.
+  contenido   String
   descripcion String?
   activo      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Tenant relation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
   @@map("document_templates")
 }
 
-model VehicleDocument {
-  id          String   @id @default(cuid())
-  nombre      String
-  tipo        String   // TITULO, SEGURO, REVISION, OTRO
-  archivo     String   // URL, ruta o base64 del archivo
-  contenido   String?  @db.Text // Contenido base64 del archivo (opcional, para guardar en DB)
-  mimetype    String?  // Tipo MIME del archivo
-  descripcion String?
-  fechaVencimiento DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  vehicleId String
-  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-
-  @@map("vehicle_documents")
-}
+// ============== PAYMENT METHOD MODELS ==============
 
 model PaymentMethod {
   id          String   @id @default(cuid())
-  nombre      String   // EFECTIVO, FINANCIACION, TRANSFERENCIA, CHEQUE, etc.
+  nombre      String
   descripcion String?
   activo      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  documents     PaymentDocument[]
-  salePayments  SalePaymentMethod[]
+  // Tenant relation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  documents    PaymentDocument[]
+  salePayments SalePaymentMethod[]
+
+  @@index([tenantId])
   @@map("payment_methods")
 }
 
 model PaymentDocument {
   id          String   @id @default(cuid())
   nombre      String
-  archivo     String   // URL, ruta o base64 del archivo
-  contenido   String?  @db.Text // Contenido base64 del archivo (opcional, para guardar en DB)
-  mimetype    String?  // Tipo MIME del archivo
+  archivo     String
+  contenido   String?  @db.Text
+  mimetype    String?
   descripcion String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -275,15 +427,20 @@ model PaymentDocument {
   @@map("payment_documents")
 }
 
+// ============== APP CONFIG MODEL ==============
+
 model AppConfig {
-  id          String   @id @default(cuid())
-  nombreEmpresa String @default("AutoCRM")
-  colorPrimario String @default("#3b82f6") // Color principal
-  colorSecundario String @default("#1e40af") // Color secundario
-  logo        String?  // URL del logo
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  nombreEmpresa   String   @default("AutoCRM")
+  colorPrimario   String   @default("#3b82f6")
+  colorSecundario String   @default("#1e40af")
+  logo            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Tenant relation (one config per tenant)
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("app_config")
 }
-

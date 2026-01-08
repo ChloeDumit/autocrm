@@ -170,7 +170,7 @@ export default function VehiclePropertiesPage() {
               Gestiona las propiedades personalizadas para los vehículos
             </p>
           </div>
-          <Button variant="outline" onClick={handleCreate}>
+          <Button onClick={handleCreate}>
             <Plus className="mr-2 h-4 w-4" />
             Nueva Propiedad
           </Button>

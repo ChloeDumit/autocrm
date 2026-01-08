@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { useAppConfig } from '@/lib/app-config'
 import { cn } from '@/lib/utils'
-import Image from 'next/image'
 import {
   LayoutDashboard,
   Car,
@@ -46,10 +45,15 @@ export function Sidebar({ onClose }: SidebarProps) {
   const { user, logout } = useAuth()
   const { config } = useAppConfig()
 
-  const primaryColor = config?.colorPrimario || '#3b82f6'
-  const secondaryColor = config?.colorSecundario || '#1e40af'
   const nombreEmpresa = config?.nombreEmpresa || 'AutoCRM'
   const logo = config?.logo
+
+  const getLogoUrl = (logoUrl: string) => {
+    if (!logoUrl) return ''
+    if (logoUrl.startsWith('http') || logoUrl.startsWith('data:')) return logoUrl
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000'
+    return `${baseUrl}${logoUrl}`
+  }
 
   const handleLinkClick = () => {
     if (onClose) {
@@ -59,25 +63,17 @@ export function Sidebar({ onClose }: SidebarProps) {
 
   return (
     <div
-      className="flex h-screen w-64 flex-col text-white"
-      style={{
-        background: `linear-gradient(180deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,
-      }}
+      className="flex h-screen w-64 flex-col text-white bg-gradient-to-b from-blue-500 to-blue-700"
     >
       {/* Header */}
       <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {logo ? (
             <div className="relative h-8 w-8 flex-shrink-0 rounded-lg overflow-hidden bg-white/10">
-              <Image
-                src={
-                  logo.startsWith('http')
-                    ? logo
-                    : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000'}${logo}`
-                }
+              <img
+                src={getLogoUrl(logo)}
                 alt={nombreEmpresa}
-                fill
-                className="object-contain p-1"
+                className="h-full w-full object-contain p-1"
               />
             </div>
           ) : (

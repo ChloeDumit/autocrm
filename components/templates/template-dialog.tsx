@@ -15,10 +15,12 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/error-handler'
 import api from '@/lib/api'
+import { TemplateEditor } from './template-editor'
+import { StarterTemplatesPicker } from './template-editor/starter-templates-picker'
+import { StarterTemplate } from '@/lib/starter-templates'
 
 const templateSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido'),
@@ -46,6 +48,7 @@ interface TemplateDialogProps {
 export function TemplateDialog({ open, onClose, template }: TemplateDialogProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
+  const [showStarterPicker, setShowStarterPicker] = useState(false)
 
   const {
     register,
@@ -65,22 +68,35 @@ export function TemplateDialog({ open, onClose, template }: TemplateDialogProps)
   })
 
   useEffect(() => {
-    if (template) {
-      reset({
-        nombre: template.nombre,
-        contenido: template.contenido,
-        descripcion: template.descripcion || '',
-        activo: template.activo,
-      })
-    } else {
-      reset({
-        nombre: '',
-        contenido: '',
-        descripcion: '',
-        activo: true,
-      })
+    if (open) {
+      if (template) {
+        reset({
+          nombre: template.nombre,
+          contenido: template.contenido,
+          descripcion: template.descripcion || '',
+          activo: template.activo,
+        })
+        setShowStarterPicker(false)
+      } else {
+        reset({
+          nombre: '',
+          contenido: '',
+          descripcion: '',
+          activo: true,
+        })
+        setShowStarterPicker(true)
+      }
     }
-  }, [template, reset])
+  }, [template, open, reset])
+
+  const handleSelectStarterTemplate = (starterTemplate: StarterTemplate) => {
+    setValue('contenido', starterTemplate.contenido)
+    if (!watch('nombre') && starterTemplate.id !== 'vacio') {
+      setValue('nombre', starterTemplate.nombre)
+      setValue('descripcion', starterTemplate.descripcion)
+    }
+    setShowStarterPicker(false)
+  }
 
   const onSubmit = async (data: TemplateFormData) => {
     setLoading(true)
@@ -88,18 +104,18 @@ export function TemplateDialog({ open, onClose, template }: TemplateDialogProps)
       if (template) {
         await api.put(`/document-templates/${template.id}`, data)
         toast({
-          title: 'Éxito',
-          description: 'Plantilla actualizada correctamente',
+          title: 'Plantilla actualizada',
+          description: 'La plantilla fue actualizada correctamente',
         })
       } else {
         await api.post('/document-templates', data)
         toast({
-          title: 'Éxito',
-          description: 'Plantilla creada correctamente',
+          title: 'Plantilla creada',
+          description: 'La plantilla fue creada correctamente',
         })
       }
       onClose()
-    } catch (error: any) {
+    } catch (error: unknown) {
       const errorMessage = getErrorMessage(error, 'Error al guardar plantilla')
       toast({
         title: 'Error',
@@ -113,7 +129,7 @@ export function TemplateDialog({ open, onClose, template }: TemplateDialogProps)
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {template ? 'Editar Plantilla' : 'Nueva Plantilla'}
@@ -121,40 +137,52 @@ export function TemplateDialog({ open, onClose, template }: TemplateDialogProps)
           <DialogDescription>
             {template
               ? 'Modifica la plantilla de documento'
-              : 'Crea una nueva plantilla de documento. Usa placeholders como {{cliente_nombre}}, {{vehiculo_marca}}, etc.'}
+              : 'Crea una nueva plantilla de documento para generar documentos de venta'}
           </DialogDescription>
         </DialogHeader>
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="nombre">Nombre *</Label>
-            <Input id="nombre" {...register('nombre')} />
-            {errors.nombre && (
-              <p className="text-sm text-red-500">{errors.nombre.message}</p>
-            )}
+          {/* Starter Template Picker - only for new templates */}
+          <StarterTemplatesPicker
+            isVisible={showStarterPicker && !template}
+            onSelect={handleSelectStarterTemplate}
+          />
+
+          {/* Basic Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="nombre">Nombre de la plantilla *</Label>
+              <Input
+                id="nombre"
+                {...register('nombre')}
+                placeholder="Ej: Contrato de Venta"
+              />
+              {errors.nombre && (
+                <p className="text-sm text-destructive">{errors.nombre.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="descripcion">Descripción</Label>
+              <Input
+                id="descripcion"
+                {...register('descripcion')}
+                placeholder="Breve descripción del uso de esta plantilla"
+              />
+            </div>
           </div>
 
+          {/* Template Editor */}
           <div className="space-y-2">
-            <Label htmlFor="descripcion">Descripción</Label>
-            <Input id="descripcion" {...register('descripcion')} />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="contenido">Contenido *</Label>
-            <Textarea
-              id="contenido"
-              {...register('contenido')}
-              placeholder="Ej: Contrato de venta para {{cliente_nombre}}..."
-              rows={10}
-              className="font-mono text-sm"
+            <Label>Contenido de la plantilla *</Label>
+            <TemplateEditor
+              value={watch('contenido')}
+              onChange={(value) => setValue('contenido', value)}
+              error={errors.contenido?.message}
             />
-            {errors.contenido && (
-              <p className="text-sm text-red-500">{errors.contenido.message}</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Placeholders disponibles: {'{{cliente_nombre}}'}, {'{{cliente_email}}'}, {'{{cliente_telefono}}'}, {'{{vehiculo_marca}}'}, {'{{vehiculo_modelo}}'}, {'{{vehiculo_ano}}'}, {'{{precio_final}}'}, {'{{vendedor_nombre}}'}, {'{{fecha_venta}}'}, {'{{fecha_actual}}'}
-            </p>
           </div>
 
+          {/* Active Toggle */}
           <div className="flex items-center space-x-2">
             <input
               type="checkbox"
@@ -166,6 +194,9 @@ export function TemplateDialog({ open, onClose, template }: TemplateDialogProps)
             <Label htmlFor="activo" className="cursor-pointer">
               Plantilla activa
             </Label>
+            <span className="text-xs text-muted-foreground ml-2">
+              (solo las plantillas activas aparecen al generar documentos)
+            </span>
           </div>
 
           <DialogFooter>
@@ -173,7 +204,7 @@ export function TemplateDialog({ open, onClose, template }: TemplateDialogProps)
               Cancelar
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Guardando...' : template ? 'Actualizar' : 'Crear'}
+              {loading ? 'Guardando...' : template ? 'Actualizar' : 'Crear Plantilla'}
             </Button>
           </DialogFooter>
         </form>
@@ -181,4 +212,3 @@ export function TemplateDialog({ open, onClose, template }: TemplateDialogProps)
     </Dialog>
   )
 }
-

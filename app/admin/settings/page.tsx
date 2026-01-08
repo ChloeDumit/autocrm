@@ -9,24 +9,22 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/error-handler'
 import api from '@/lib/api'
-import { Palette, Upload } from 'lucide-react'
+import { Settings, Upload, X, Loader2 } from 'lucide-react'
+import { useAppConfig } from '@/lib/app-config'
 
 interface AppConfig {
   id: string
   nombreEmpresa: string
-  colorPrimario: string
-  colorSecundario: string
   logo?: string
 }
 
 export default function SettingsPage() {
   const { toast } = useToast()
+  const { refresh: refreshAppConfig } = useAppConfig()
   const [loading, setLoading] = useState(false)
-  const [config, setConfig] = useState<AppConfig | null>(null)
+  const [uploading, setUploading] = useState(false)
   const [formData, setFormData] = useState({
     nombreEmpresa: '',
-    colorPrimario: '#3b82f6',
-    colorSecundario: '#1e40af',
     logo: '',
   })
 
@@ -37,11 +35,8 @@ export default function SettingsPage() {
   const fetchConfig = async () => {
     try {
       const res = await api.get('/app-config')
-      setConfig(res.data)
       setFormData({
         nombreEmpresa: res.data.nombreEmpresa || '',
-        colorPrimario: res.data.colorPrimario || '#3b82f6',
-        colorSecundario: res.data.colorSecundario || '#1e40af',
         logo: res.data.logo || '',
       })
     } catch (error) {
@@ -58,17 +53,13 @@ export default function SettingsPage() {
     setLoading(true)
 
     try {
-      const res = await api.put('/app-config', formData)
-      setConfig(res.data)
+      await api.put('/app-config', formData)
       toast({
-        title: 'Éxito',
-        description: 'Configuración guardada correctamente',
+        title: 'Configuración guardada',
+        description: 'Los cambios se aplicaron correctamente',
       })
-      // Recargar la página para aplicar los cambios
-      setTimeout(() => {
-        window.location.reload()
-      }, 1000)
-    } catch (error: any) {
+      refreshAppConfig()
+    } catch (error: unknown) {
       const errorMessage = getErrorMessage(error, 'Error al guardar configuración')
       toast({
         title: 'Error',
@@ -84,48 +75,62 @@ export default function SettingsPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const formData = new FormData()
-    formData.append('image', file)
+    setUploading(true)
+    const uploadData = new FormData()
+    uploadData.append('image', file)
 
     try {
-      const res = await api.post('/vehicle-image', formData, {
+      const res = await api.post('/upload-logo', uploadData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       })
-      setFormData({ ...formData, logo: res.data.url })
+      setFormData(prev => ({ ...prev, logo: res.data.url }))
       toast({
-        title: 'Éxito',
-        description: 'Logo subido correctamente',
+        title: 'Logo subido',
+        description: 'El logo se subió correctamente. Guarda para aplicar los cambios.',
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       const errorMessage = getErrorMessage(error, 'Error al subir logo')
       toast({
         title: 'Error',
         description: errorMessage,
         variant: 'destructive',
       })
+    } finally {
+      setUploading(false)
     }
+  }
+
+  const handleRemoveLogo = () => {
+    setFormData(prev => ({ ...prev, logo: '' }))
+  }
+
+  const getLogoUrl = (logo: string) => {
+    if (!logo) return ''
+    if (logo.startsWith('http') || logo.startsWith('data:')) return logo
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000'
+    return `${baseUrl}${logo}`
   }
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-2xl">
         <div>
-          <h1 className="text-3xl font-bold">Configuración de la Aplicación</h1>
-          <p className="text-muted-foreground">
-            Personaliza el nombre y colores de tu automotora
+          <h1 className="text-2xl font-bold">Configuración</h1>
+          <p className="text-muted-foreground mt-1">
+            Personaliza la información de tu automotora
           </p>
         </div>
 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Palette className="h-5 w-5" />
-              Personalización
+              <Settings className="h-5 w-5" />
+              Datos de la Empresa
             </CardTitle>
             <CardDescription>
-              Configura la apariencia de tu aplicación
+              Configura el nombre y logo de tu automotora
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -143,120 +148,83 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="colorPrimario">Color Primario *</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="colorPrimario"
-                      type="color"
-                      value={formData.colorPrimario}
-                      onChange={(e) =>
-                        setFormData({ ...formData, colorPrimario: e.target.value })
-                      }
-                      className="h-10 w-20"
-                    />
-                    <Input
-                      type="text"
-                      value={formData.colorPrimario}
-                      onChange={(e) =>
-                        setFormData({ ...formData, colorPrimario: e.target.value })
-                      }
-                      placeholder="#3b82f6"
-                      pattern="^#[0-9A-Fa-f]{6}$"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="colorSecundario">Color Secundario *</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="colorSecundario"
-                      type="color"
-                      value={formData.colorSecundario}
-                      onChange={(e) =>
-                        setFormData({ ...formData, colorSecundario: e.target.value })
-                      }
-                      className="h-10 w-20"
-                    />
-                    <Input
-                      type="text"
-                      value={formData.colorSecundario}
-                      onChange={(e) =>
-                        setFormData({ ...formData, colorSecundario: e.target.value })
-                      }
-                      placeholder="#1e40af"
-                      pattern="^#[0-9A-Fa-f]{6}$"
-                    />
-                  </div>
-                </div>
-              </div>
-
               <div className="space-y-2">
-                <Label htmlFor="logo">Logo</Label>
-                <div className="flex items-center gap-4">
-                  {formData.logo && (
-                    <div className="h-20 w-20 rounded-lg overflow-hidden border">
-                      <img
-                        src={
-                          formData.logo.startsWith('http')
-                            ? formData.logo
-                            : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000'}${formData.logo}`
-                        }
-                        alt="Logo"
-                        className="h-full w-full object-contain"
-                      />
+                <Label>Logo</Label>
+                <div className="flex items-start gap-4">
+                  {formData.logo ? (
+                    <div className="relative">
+                      <div className="h-24 w-24 rounded-lg overflow-hidden border bg-muted">
+                        <img
+                          src={getLogoUrl(formData.logo)}
+                          alt="Logo"
+                          className="h-full w-full object-contain"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-6 w-6"
+                        onClick={handleRemoveLogo}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="h-24 w-24 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center bg-muted/50">
+                      <span className="text-xs text-muted-foreground">Sin logo</span>
                     </div>
                   )}
-                  <div className="flex-1">
+                  <div className="flex-1 space-y-2">
                     <Input
                       id="logo"
                       type="file"
                       accept="image/*"
                       onChange={handleLogoUpload}
                       className="hidden"
+                      disabled={uploading}
                     />
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => document.getElementById('logo')?.click()}
+                      disabled={uploading}
                     >
-                      <Upload className="mr-2 h-4 w-4" />
-                      {formData.logo ? 'Cambiar Logo' : 'Subir Logo'}
+                      {uploading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Subiendo...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="mr-2 h-4 w-4" />
+                          {formData.logo ? 'Cambiar Logo' : 'Subir Logo'}
+                        </>
+                      )}
                     </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Formatos: PNG, JPG, SVG. Tamaño recomendado: 200x200px
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex justify-end">
-                <Button variant="outline" type="submit" disabled={loading}>
-                  {loading ? 'Guardando...' : 'Guardar Configuración'}
+              <div className="flex justify-end pt-4 border-t">
+                <Button type="submit" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    'Guardar Configuración'
+                  )}
                 </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Vista Previa</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div
-              className="p-6 rounded-lg"
-              style={{
-                background: `linear-gradient(135deg, ${formData.colorPrimario} 0%, ${formData.colorSecundario} 100%)`,
-                color: 'white',
-              }}
-            >
-              <h2 className="text-2xl font-bold">{formData.nombreEmpresa || 'AutoCRM'}</h2>
-              <p className="text-white/80 mt-2">Sistema de Gestión para Automotoras</p>
-            </div>
           </CardContent>
         </Card>
       </div>
     </MainLayout>
   )
 }
-

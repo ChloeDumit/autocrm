@@ -26,7 +26,8 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/error-handler'
 import api from '@/lib/api'
-import { CreditCard, X, Plus } from 'lucide-react'
+import { CreditCard, X, Plus, FileText, Download, Eye, AlertTriangle } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 
 const paymentMethodSchema = z.object({
   paymentMethodId: z.string().min(1, 'La forma de pago es requerida'),
@@ -36,10 +37,20 @@ const paymentMethodSchema = z.object({
 
 type PaymentMethodFormData = z.infer<typeof paymentMethodSchema>
 
+interface PaymentDocument {
+  id: string
+  nombre: string
+  archivo: string
+  contenido?: string
+  mimetype?: string
+  descripcion?: string
+}
+
 interface PaymentMethod {
   id: string
   nombre: string
   descripcion?: string
+  documents?: PaymentDocument[]
 }
 
 interface SalePaymentMethod {
@@ -187,6 +198,46 @@ export function SalePaymentMethodsDialog({ open, onClose, saleId }: SalePaymentM
     return salePaymentMethods.reduce((sum, spm) => sum + (spm.monto || 0), 0)
   }
 
+  const handleDownloadDocument = async (doc: PaymentDocument) => {
+    try {
+      const response = await api.get(`/files/payment-document/${doc.id}`, {
+        responseType: 'blob',
+      })
+      const blob = new Blob([response.data], { type: doc.mimetype || 'application/octet-stream' })
+      const downloadUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = downloadUrl
+      a.download = doc.nombre
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(downloadUrl)
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Error al descargar el documento',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleViewDocument = async (doc: PaymentDocument) => {
+    try {
+      const response = await api.get(`/files/payment-document/${doc.id}`, {
+        responseType: 'blob',
+      })
+      const blob = new Blob([response.data], { type: doc.mimetype || 'application/pdf' })
+      const blobUrl = URL.createObjectURL(blob)
+      window.open(blobUrl, '_blank')
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Error al abrir el documento',
+        variant: 'destructive',
+      })
+    }
+  }
+
   if (!saleId) return null
 
   return (
@@ -217,46 +268,119 @@ export function SalePaymentMethodsDialog({ open, onClose, saleId }: SalePaymentM
                   No hay formas de pago registradas
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {salePaymentMethods.map((spm) => (
-                    <div
-                      key={spm.id}
-                      className="flex items-center justify-between p-3 border rounded-lg"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <CreditCard className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{spm.paymentMethod.nombre}</span>
-                          {spm.monto && (
-                            <span className="text-sm text-primary font-medium">
-                              ${spm.monto.toLocaleString()}
-                            </span>
-                          )}
+                <div className="space-y-3">
+                  {salePaymentMethods.map((spm) => {
+                    const hasDocuments = spm.paymentMethod.documents && spm.paymentMethod.documents.length > 0
+
+                    return (
+                      <div
+                        key={spm.id}
+                        className="border rounded-lg overflow-hidden"
+                      >
+                        <div className="flex items-center justify-between p-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <CreditCard className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">{spm.paymentMethod.nombre}</span>
+                              {spm.monto && (
+                                <span className="text-sm text-primary font-medium">
+                                  ${spm.monto.toLocaleString()}
+                                </span>
+                              )}
+                              {hasDocuments && (
+                                <Badge variant="outline" className="text-xs bg-amber-100 text-amber-700 border-amber-300">
+                                  <AlertTriangle className="h-3 w-3 mr-1" />
+                                  {spm.paymentMethod.documents!.length} doc. requerido{spm.paymentMethod.documents!.length > 1 ? 's' : ''}
+                                </Badge>
+                              )}
+                            </div>
+                            {spm.notas && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {spm.notas}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(spm)}
+                            >
+                              Editar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(spm.id)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        {spm.notas && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {spm.notas}
-                          </p>
+
+                        {/* Required Documents Section - Always visible */}
+                        {hasDocuments && (
+                          <div className="bg-amber-50 dark:bg-amber-950/30 border-t border-amber-200 dark:border-amber-800 px-4 py-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <AlertTriangle className="h-4 w-4 text-amber-600" />
+                              <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                                Documentos Requeridos
+                              </p>
+                            </div>
+                            <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">
+                              Estos documentos deben ser completados y firmados por el cliente:
+                            </p>
+                            <div className="space-y-2">
+                              {spm.paymentMethod.documents!.map((doc) => (
+                                <div
+                                  key={doc.id}
+                                  className="flex items-center justify-between bg-white dark:bg-slate-800 p-3 rounded-lg border border-amber-200 dark:border-amber-700"
+                                >
+                                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                                    <div className="flex-shrink-0 w-6 h-6 rounded-full border-2 border-amber-400 flex items-center justify-center">
+                                      <FileText className="h-3 w-3 text-amber-600" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-medium truncate">{doc.nombre}</p>
+                                      {doc.descripcion && (
+                                        <p className="text-xs text-muted-foreground truncate">
+                                          {doc.descripcion}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">
+                                      Requerido
+                                    </Badge>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleViewDocument(doc)}
+                                      title="Ver plantilla del documento"
+                                      className="gap-1"
+                                    >
+                                      <Eye className="h-3 w-3" />
+                                      Ver
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleDownloadDocument(doc)}
+                                      title="Descargar plantilla"
+                                      className="gap-1"
+                                    >
+                                      <Download className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(spm)}
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(spm.id)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </>

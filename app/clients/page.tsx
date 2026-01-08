@@ -187,7 +187,7 @@ export default function ClientsPage() {
               {clients.length} cliente{clients.length !== 1 ? 's' : ''} registrado{clients.length !== 1 ? 's' : ''}
             </p>
           </div>
-          <Button variant="outline" onClick={handleCreate}>
+          <Button onClick={handleCreate}>
             <Plus className="mr-1.5 h-4 w-4" />
             Nuevo Cliente
           </Button>
@@ -290,7 +290,7 @@ export default function ClientsPage() {
               <Users className="h-8 w-8 text-muted-foreground/50" />
             </div>
             <p className="text-muted-foreground mb-4">No hay clientes registrados</p>
-            <Button onClick={handleCreate} variant="outline">
+            <Button onClick={handleCreate}>
               <Plus className="mr-1.5 h-4 w-4" />
               Agregar primer cliente
             </Button>
