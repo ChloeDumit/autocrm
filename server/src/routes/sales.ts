@@ -11,8 +11,8 @@ const saleSchema = z.object({
   vehicleId: z.string(),
   clientId: z.string(),
   etapa: z.enum(['INTERESADO', 'PRUEBA', 'NEGOCIACION', 'VENDIDO', 'CANCELADO']).optional(),
-  precioFinal: z.number().positive().optional(),
-  notas: z.string().optional(),
+  precioFinal: z.number().positive().optional().nullable(),
+  notas: z.string().optional().nullable(),
 });
 
 // Apply tenant middleware to all routes

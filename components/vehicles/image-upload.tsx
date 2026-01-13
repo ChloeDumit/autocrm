@@ -145,7 +145,7 @@ export function ImageUpload({ images, onImagesChange, maxImages = 10 }: ImageUpl
             >
               {uploading ? (
                 <>
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                   <span className="text-xs">Subiendo...</span>
                 </>
               ) : (

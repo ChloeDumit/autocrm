@@ -213,7 +213,10 @@ export default function VehiclePropertiesPage() {
           <CardContent>
             {loading ? (
               <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                <div className="flex flex-col items-center gap-3">
+                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                  <p className="text-sm text-muted-foreground">Cargando propiedades...</p>
+                </div>
               </div>
             ) : customFields.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">

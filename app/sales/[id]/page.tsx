@@ -31,6 +31,7 @@ import {
   Eye,
   AlertTriangle,
   CheckCircle2,
+  Loader2,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -138,6 +139,7 @@ export default function SaleDetailPage() {
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false)
   const [saleDocumentsDialogOpen, setSaleDocumentsDialogOpen] = useState(false)
   const [paymentMethodsDialogOpen, setPaymentMethodsDialogOpen] = useState(false)
+  const [updatingStage, setUpdatingStage] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -180,6 +182,36 @@ export default function SaleDetailPage() {
     }
   }
 
+  const handleStageChange = async (newStage: string) => {
+    if (!sale || sale.etapa === newStage || updatingStage) return
+
+    // Confirmation for critical stages
+    if (newStage === 'VENDIDO') {
+      if (!confirm('¿Confirmas que la venta ha sido completada? Esto marcará el vehículo como vendido.')) return
+    }
+    if (newStage === 'CANCELADO') {
+      if (!confirm('¿Estás seguro de cancelar esta venta?')) return
+    }
+
+    setUpdatingStage(true)
+    try {
+      await api.put(`/sales/${sale.id}`, { etapa: newStage })
+      setSale({ ...sale, etapa: newStage })
+      toast({
+        title: 'Etapa actualizada',
+        description: `La venta cambió a "${stageConfig[newStage]?.label || newStage}"`,
+      })
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Error al actualizar la etapa',
+        variant: 'destructive',
+      })
+    } finally {
+      setUpdatingStage(false)
+    }
+  }
+
   const getImageUrl = (image?: string) => {
     if (!image || image.trim() === '') return null
     // Handle URLs and data URIs directly
@@ -212,7 +244,10 @@ export default function SaleDetailPage() {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <p className="text-sm text-muted-foreground">Cargando venta...</p>
+          </div>
         </div>
       </MainLayout>
     )
@@ -273,9 +308,53 @@ export default function SaleDetailPage() {
                 <h1 className="text-2xl font-bold">
                   {sale.vehicle.marca} {sale.vehicle.modelo}
                 </h1>
-                <Badge className={`${stage.bgColor} ${stage.color} border-0`}>
-                  {stage.label}
-                </Badge>
+                {/* Stage Badge - Clickable dropdown when editable */}
+                {sale.etapa !== 'VENDIDO' && sale.etapa !== 'CANCELADO' ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium transition-colors ${stage.bgColor} ${stage.color} hover:opacity-80 cursor-pointer`}
+                        disabled={updatingStage}
+                      >
+                        {updatingStage ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : null}
+                        {stage.label}
+                        <ChevronRight className="h-3 w-3" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {(['INTERESADO', 'PRUEBA', 'NEGOCIACION', 'VENDIDO'] as const).map((stageKey) => {
+                        const stageInfo = stageConfig[stageKey]
+                        const isActive = sale.etapa === stageKey
+                        return (
+                          <DropdownMenuItem
+                            key={stageKey}
+                            onClick={() => handleStageChange(stageKey)}
+                            disabled={isActive}
+                            className={isActive ? 'bg-muted' : ''}
+                          >
+                            <span className={`w-2 h-2 rounded-full mr-2 ${stageInfo.bgColor}`} />
+                            {stageInfo.label}
+                            {isActive && <span className="text-xs text-muted-foreground ml-2">(actual)</span>}
+                          </DropdownMenuItem>
+                        )
+                      })}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => handleStageChange('CANCELADO')}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <span className="w-2 h-2 rounded-full mr-2 bg-red-100" />
+                        Cancelar venta
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <Badge className={`${stage.bgColor} ${stage.color} border-0`}>
+                    {stage.label}
+                  </Badge>
+                )}
               </div>
               <p className="text-muted-foreground text-sm mt-1">
                 Venta para {sale.client.nombre} · Creada {formatDate(sale.createdAt)}

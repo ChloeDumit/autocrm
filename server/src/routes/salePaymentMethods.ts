@@ -9,8 +9,8 @@ const prisma = new PrismaClient();
 
 const salePaymentMethodSchema = z.object({
   paymentMethodId: z.string().min(1),
-  monto: z.number().positive().optional(),
-  notas: z.string().optional(),
+  monto: z.number().positive().optional().nullable(),
+  notas: z.string().optional().nullable(),
 });
 
 // Apply tenant middleware to all routes

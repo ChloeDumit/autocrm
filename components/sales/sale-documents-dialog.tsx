@@ -72,6 +72,7 @@ interface SaleDocumentsDialogProps {
 export function SaleDocumentsDialog({ open, onClose, saleId }: SaleDocumentsDialogProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [documents, setDocuments] = useState<SaleDocument[]>([])
   const [paymentMethods, setPaymentMethods] = useState<SalePaymentMethod[]>([])
@@ -98,10 +99,26 @@ export function SaleDocumentsDialog({ open, onClose, saleId }: SaleDocumentsDial
 
   useEffect(() => {
     if (open && saleId) {
-      fetchDocuments()
-      fetchPaymentMethods()
+      fetchData()
     }
   }, [open, saleId])
+
+  const fetchData = async () => {
+    if (!saleId) return
+    setFetching(true)
+    try {
+      const [documentsRes, saleRes] = await Promise.all([
+        api.get(`/sale-documents/sale/${saleId}`),
+        api.get(`/sales/${saleId}`),
+      ])
+      setDocuments(documentsRes.data)
+      setPaymentMethods(saleRes.data.paymentMethods || [])
+    } catch (error) {
+      console.error('Error fetching data:', error)
+    } finally {
+      setFetching(false)
+    }
+  }
 
   const fetchDocuments = async () => {
     if (!saleId) return
@@ -110,16 +127,6 @@ export function SaleDocumentsDialog({ open, onClose, saleId }: SaleDocumentsDial
       setDocuments(res.data)
     } catch (error) {
       console.error('Error fetching documents:', error)
-    }
-  }
-
-  const fetchPaymentMethods = async () => {
-    if (!saleId) return
-    try {
-      const res = await api.get(`/sales/${saleId}`)
-      setPaymentMethods(res.data.paymentMethods || [])
-    } catch (error) {
-      console.error('Error fetching payment methods:', error)
     }
   }
 
@@ -315,7 +322,14 @@ export function SaleDocumentsDialog({ open, onClose, saleId }: SaleDocumentsDial
         </DialogHeader>
 
         <div className="space-y-4">
-          {!showForm ? (
+          {fetching ? (
+            <div className="flex items-center justify-center h-48">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                <p className="text-sm text-muted-foreground">Cargando documentos...</p>
+              </div>
+            </div>
+          ) : !showForm ? (
             <>
               <div className="flex justify-end">
                 <Button variant="outline" onClick={handleNew}>

@@ -69,6 +69,7 @@ interface SalePaymentMethodsDialogProps {
 export function SalePaymentMethodsDialog({ open, onClose, saleId }: SalePaymentMethodsDialogProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(true)
   const [salePaymentMethods, setSalePaymentMethods] = useState<SalePaymentMethod[]>([])
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PaymentMethod[]>([])
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<SalePaymentMethod | null>(null)
@@ -92,10 +93,25 @@ export function SalePaymentMethodsDialog({ open, onClose, saleId }: SalePaymentM
 
   useEffect(() => {
     if (open && saleId) {
-      fetchSalePaymentMethods()
-      fetchAvailablePaymentMethods()
+      fetchData()
     }
   }, [open, saleId])
+
+  const fetchData = async () => {
+    setFetching(true)
+    try {
+      const [salePaymentMethodsRes, paymentMethodsRes] = await Promise.all([
+        api.get(`/sale-payment-methods/sale/${saleId}`),
+        api.get('/payment-methods', { params: { activo: true } }),
+      ])
+      setSalePaymentMethods(salePaymentMethodsRes.data)
+      setAvailablePaymentMethods(paymentMethodsRes.data)
+    } catch (error) {
+      console.error('Error fetching data:', error)
+    } finally {
+      setFetching(false)
+    }
+  }
 
   const fetchSalePaymentMethods = async () => {
     if (!saleId) return
@@ -104,15 +120,6 @@ export function SalePaymentMethodsDialog({ open, onClose, saleId }: SalePaymentM
       setSalePaymentMethods(res.data)
     } catch (error) {
       console.error('Error fetching sale payment methods:', error)
-    }
-  }
-
-  const fetchAvailablePaymentMethods = async () => {
-    try {
-      const res = await api.get('/payment-methods', { params: { activo: true } })
-      setAvailablePaymentMethods(res.data)
-    } catch (error) {
-      console.error('Error fetching payment methods:', error)
     }
   }
 
@@ -251,7 +258,14 @@ export function SalePaymentMethodsDialog({ open, onClose, saleId }: SalePaymentM
         </DialogHeader>
 
         <div className="space-y-4">
-          {!showForm ? (
+          {fetching ? (
+            <div className="flex items-center justify-center h-48">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                <p className="text-sm text-muted-foreground">Cargando formas de pago...</p>
+              </div>
+            </div>
+          ) : !showForm ? (
             <>
               <div className="flex justify-between items-center">
                 <div className="text-sm text-muted-foreground">
