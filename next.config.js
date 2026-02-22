@@ -20,8 +20,6 @@ const nextConfig = {
     ],
     unoptimized: process.env.NODE_ENV === 'development',
   },
-  // Output configuration for Vercel
-  output: 'standalone',
 }
 
 module.exports = nextConfig

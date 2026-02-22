@@ -1,10 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { AuthProvider } from '@/lib/auth-context'
-import { AppConfigProvider } from '@/lib/app-config'
-import { TenantProvider } from '@/lib/tenant-context'
-import { Toaster } from '@/components/ui/toaster'
+import { Providers } from '@/components/providers'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -12,6 +9,9 @@ export const metadata: Metadata = {
   title: 'Rodar - Sistema de Gestión para Automotoras',
   description: 'CRM completo para gestión de vehículos, clientes y ventas',
 }
+
+// Force dynamic rendering to prevent pre-rendering errors with client-side context
+export const dynamic = 'force-dynamic'
 
 export default function RootLayout({
   children,
@@ -21,14 +21,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={inter.className}>
-        <TenantProvider>
-          <AuthProvider>
-            <AppConfigProvider>
-              {children}
-              <Toaster />
-            </AppConfigProvider>
-          </AuthProvider>
-        </TenantProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )
