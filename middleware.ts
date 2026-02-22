@@ -22,6 +22,7 @@ const RESERVED_SUBDOMAINS = [
 // Public paths that don't require tenant context
 const PUBLIC_PATHS = [
   '/register',
+  '/register-company',
   '/pricing',
   '/about',
   '/contact',
@@ -50,7 +51,23 @@ function getSubdomain(hostname: string): string | null {
     return null;
   }
 
-  // For production (e.g., company1.autocrm.com)
+  // For Vercel preview/deployment URLs (e.g., myapp.vercel.app)
+  // The base domain is already 3 parts (project.vercel.app),
+  // so a tenant subdomain would need 4+ parts (tenant.project.vercel.app)
+  // Note: Vercel doesn't support wildcard subdomains on *.vercel.app,
+  // so tenants require a custom domain with wildcard DNS.
+  if (hostname.endsWith('.vercel.app')) {
+    const parts = hostname.split('.');
+    if (parts.length >= 4) {
+      const subdomain = parts[0];
+      if (!RESERVED_SUBDOMAINS.includes(subdomain.toLowerCase())) {
+        return subdomain;
+      }
+    }
+    return null;
+  }
+
+  // For custom production domains (e.g., company1.rodar.uy)
   const parts = hostname.split('.');
   if (parts.length >= 3) {
     const subdomain = parts[0];

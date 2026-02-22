@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { RodarLogo } from '@/components/ui/rodar-logo';
 
-export default function RegisterCompanyPage() {
+export default function RegisterForm() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     companyName: '',

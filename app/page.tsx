@@ -7,7 +7,7 @@ import { useTenant } from '@/lib/tenant-context';
 import { useAppConfig } from '@/lib/app-config';
 import { Car } from 'lucide-react';
 import Image from 'next/image';
-import LandingPage from './(public)/page';
+import LandingPage from '@/components/landing-page';
 
 export default function Home() {
   const router = useRouter();

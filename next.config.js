@@ -20,8 +20,9 @@ const nextConfig = {
     ],
     unoptimized: process.env.NODE_ENV === 'development',
   },
-  // For Render deployment - use standalone output
-  output: 'standalone',
+  // Use standalone output only for self-hosted (Render, Railway, etc.)
+  // Vercel handles this automatically - don't use standalone there
+  ...(process.env.STANDALONE === 'true' ? { output: 'standalone' } : {}),
   // Disable static optimization completely to prevent pre-rendering errors
   experimental: {
     missingSuspenseWithCSRBailout: false,
