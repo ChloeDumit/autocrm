@@ -20,6 +20,12 @@ const nextConfig = {
     ],
     unoptimized: process.env.NODE_ENV === 'development',
   },
+  // Disable static page generation to prevent pre-rendering errors
+  output: 'standalone',
+  // Skip static optimization for all pages
+  experimental: {
+    missingSuspenseWithCSRBailout: false,
+  },
 }
 
 module.exports = nextConfig
