@@ -45,7 +45,7 @@ export function Sidebar({ onClose }: SidebarProps) {
   const { user, logout } = useAuth()
   const { config } = useAppConfig()
 
-  const nombreEmpresa = config?.nombreEmpresa || 'AutoCRM'
+  const nombreEmpresa = config?.nombreEmpresa || 'Rodar'
   const logo = config?.logo
 
   const getLogoUrl = (logoUrl: string) => {

@@ -140,13 +140,13 @@ export default function SuperAdminDashboard() {
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-slate-400">Platform overview and metrics</p>
         </div>
-        {metrics?.pendingRegistrations > 0 && (
+        {(metrics?.pendingRegistrations ?? 0) > 0 && (
           <Link
             href="/super-admin/registrations"
             className="flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-lg transition-colors"
           >
             <Clock className="h-5 w-5" />
-            <span>{metrics.pendingRegistrations} pending registrations</span>
+            <span>{metrics?.pendingRegistrations} pending registrations</span>
           </Link>
         )}
       </div>

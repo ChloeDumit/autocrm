@@ -577,7 +577,7 @@ async function main() {
   await prisma.notification.createMany({
     data: [
       {
-        titulo: 'Bienvenido a AutoCRM',
+        titulo: 'Bienvenido a Rodar',
         mensaje: 'Tu cuenta de Autos del Norte está lista.',
         tipo: 'SUCCESS',
         userId: admin1.id,
@@ -598,7 +598,7 @@ async function main() {
         tenantId: tenant1.id,
       },
       {
-        titulo: 'Bienvenido a AutoCRM',
+        titulo: 'Bienvenido a Rodar',
         mensaje: 'Tu cuenta de Montevideo Motors está lista.',
         tipo: 'SUCCESS',
         userId: admin2.id,

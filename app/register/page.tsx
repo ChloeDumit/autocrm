@@ -29,7 +29,7 @@ export default function RegisterPage() {
   const { config } = useAppConfig()
 
   const primaryColor = config?.colorPrimario || '#3b82f6'
-  const nombreEmpresa = config?.nombreEmpresa || 'AutoCRM'
+  const nombreEmpresa = config?.nombreEmpresa || 'Rodar'
   const logo = config?.logo
 
   const handleSubmit = async (e: React.FormEvent) => {

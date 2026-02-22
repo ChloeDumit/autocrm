@@ -9,7 +9,7 @@ import { Toaster } from '@/components/ui/toaster'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'AutoCRM - Sistema de Gestión para Automotoras',
+  title: 'Rodar - Sistema de Gestión para Automotoras',
   description: 'CRM completo para gestión de vehículos, clientes y ventas',
 }
 

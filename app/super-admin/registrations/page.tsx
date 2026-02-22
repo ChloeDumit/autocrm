@@ -165,7 +165,7 @@ export default function RegistrationsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                     <div className="flex items-center gap-2 text-slate-400">
                       <Globe className="h-4 w-4" />
-                      <span>{reg.subdomain}.autocrm.com</span>
+                      <span>{reg.subdomain}.rodar.uy</span>
                     </div>
                     <div className="flex items-center gap-2 text-slate-400">
                       <Mail className="h-4 w-4" />

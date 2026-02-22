@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -139,7 +139,15 @@ interface GeneratedDocument {
   generatedAt: Date
 }
 
-export default function NewSalePage() {
+export default function NewSalePageWrapper() {
+  return (
+    <Suspense>
+      <NewSalePage />
+    </Suspense>
+  )
+}
+
+function NewSalePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
@@ -150,6 +158,8 @@ export default function NewSalePage() {
   // Step state
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [savingSale, setSavingSale] = useState(false)
+  const [savedSaleId, setSavedSaleId] = useState<string | null>(null)
 
   // Step 1: Vehicle & Client
   const [vehicleSearchResults, setVehicleSearchResults] = useState<Vehicle[]>([])
@@ -309,6 +319,58 @@ export default function NewSalePage() {
     return `${baseUrl}${imagePath}`
   }
 
+  // Save sale (called at end of step 3)
+  const saveSale = async (): Promise<string | null> => {
+    if (savedSaleId) {
+      // Sale already saved, just return the ID
+      return savedSaleId
+    }
+
+    setSavingSale(true)
+    try {
+      const formData = watch()
+      
+      // 1. Create the sale
+      const saleData = {
+        vehicleId: formData.vehicleId,
+        clientId: formData.clientId,
+        etapa: formData.etapa,
+        precioFinal: formData.precioFinal || undefined,
+        notas: formData.notas || undefined,
+      }
+      const res = await api.post('/sales', saleData)
+      const saleId = res.data.id
+      setSavedSaleId(saleId)
+
+      // 2. Add payment methods
+      for (const pm of selectedPaymentMethods) {
+        await api.post('/sale-payment-methods', {
+          saleId,
+          paymentMethodId: pm.paymentMethodId,
+          monto: pm.monto || undefined,
+          notas: pm.notas || undefined,
+        })
+      }
+
+      toast({
+        title: 'Venta guardada',
+        description: 'La venta se guardó correctamente. Ahora puedes generar documentos.',
+      })
+
+      return saleId
+    } catch (error: any) {
+      const errorMessage = getErrorMessage(error, 'Error al guardar la venta')
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      })
+      return null
+    } finally {
+      setSavingSale(false)
+    }
+  }
+
   // Step navigation
   const handleNext = async () => {
     if (currentStep === 1) {
@@ -318,6 +380,14 @@ export default function NewSalePage() {
     if (currentStep === 2) {
       const valid = await trigger(['etapa', 'precioFinal', 'notas'])
       if (!valid) return
+    }
+    if (currentStep === 3) {
+      // Before moving to step 4, save the sale
+      const saleId = await saveSale()
+      if (!saleId) {
+        // If saving failed, don't advance
+        return
+      }
     }
     setCurrentStep(prev => Math.min(prev + 1, 4))
   }
@@ -408,6 +478,52 @@ export default function NewSalePage() {
 
   // Generate document from template
   const generateDocumentFromTemplate = async (template: Template) => {
+    // If sale is already saved, use saleId (preferred method)
+    if (savedSaleId) {
+      setGeneratingTemplate(template.id)
+      try {
+        const res = await api.post(`/document-templates/${template.id}/generate`, {
+          saleId: savedSaleId,
+        })
+
+        const generatedDoc: GeneratedDocument = {
+          templateId: template.id,
+          templateName: template.nombre,
+          content: res.data.document,
+          generatedAt: new Date(),
+        }
+
+        // Add or replace the generated document
+        setGeneratedDocuments(prev => {
+          const existing = prev.findIndex(d => d.templateId === template.id)
+          if (existing >= 0) {
+            const updated = [...prev]
+            updated[existing] = generatedDoc
+            return updated
+          }
+          return [...prev, generatedDoc]
+        })
+
+        setPreviewDocument(generatedDoc)
+
+        toast({
+          title: 'Documento generado',
+          description: `${template.nombre} generado correctamente`,
+        })
+      } catch (error: any) {
+        const errorMessage = getErrorMessage(error, 'Error al generar documento')
+        toast({
+          title: 'Error',
+          description: errorMessage,
+          variant: 'destructive',
+        })
+      } finally {
+        setGeneratingTemplate(null)
+      }
+      return
+    }
+
+    // Fallback: if sale not saved yet, use client/vehicle data
     if (!selectedVehicle || !selectedClient) {
       toast({
         title: 'Error',
@@ -420,10 +536,24 @@ export default function NewSalePage() {
     setGeneratingTemplate(template.id)
     try {
       // Build context for template generation
-      const context = {
+      // If client has an ID, use it. Otherwise, send client data directly
+      const context: any = {
         vehicleId: selectedVehicle.id,
-        clientId: selectedClient.id,
         precioFinal: watch('precioFinal') || selectedVehicle.precio,
+      }
+
+      // If client has an ID (exists in DB), use clientId
+      // Otherwise, send client data directly from form
+      if (selectedClient.id) {
+        context.clientId = selectedClient.id
+      } else {
+        // Client not yet saved, send data directly
+        context.client = {
+          nombre: selectedClient.nombre,
+          email: selectedClient.email || undefined,
+          telefono: selectedClient.telefono,
+          direccion: selectedClient.direccion || undefined,
+        }
       }
 
       const res = await api.post(`/document-templates/${template.id}/generate`, context)
@@ -484,30 +614,18 @@ export default function NewSalePage() {
   }
 
   const onSubmit = async (data: SaleFormData) => {
+    // Ensure sale is saved first
+    let saleId = savedSaleId
+    if (!saleId) {
+      saleId = await saveSale()
+      if (!saleId) {
+        return // Error already shown in saveSale
+      }
+    }
+
     setLoading(true)
     try {
-      // 1. Create the sale - ensure notas is string, not null
-      const saleData = {
-        vehicleId: data.vehicleId,
-        clientId: data.clientId,
-        etapa: data.etapa,
-        precioFinal: data.precioFinal || undefined,
-        notas: data.notas || undefined,
-      }
-      const res = await api.post('/sales', saleData)
-      const saleId = res.data.id
-
-      // 2. Add payment methods
-      for (const pm of selectedPaymentMethods) {
-        await api.post('/sale-payment-methods', {
-          saleId,
-          paymentMethodId: pm.paymentMethodId,
-          monto: pm.monto || undefined,
-          notas: pm.notas || undefined,
-        })
-      }
-
-      // 3. Upload documents
+      // 1. Upload documents
       for (const doc of pendingDocuments) {
         try {
           const formData = new FormData()
@@ -530,7 +648,7 @@ export default function NewSalePage() {
         }
       }
 
-      // 4. Save generated documents from templates
+      // 2. Save generated documents from templates
       for (const genDoc of generatedDocuments) {
         try {
           const fileName = `${genDoc.templateName}_${new Date().toISOString().split('T')[0]}.txt`
@@ -553,12 +671,12 @@ export default function NewSalePage() {
       }
 
       toast({
-        title: 'Venta creada',
-        description: 'La venta se creó correctamente',
+        title: 'Venta completada',
+        description: 'Todos los documentos se guardaron correctamente',
       })
       router.push(`/sales/${saleId}`)
     } catch (error: any) {
-      const errorMessage = getErrorMessage(error, 'Error al crear la venta')
+      const errorMessage = getErrorMessage(error, 'Error al guardar documentos')
       toast({
         title: 'Error',
         description: errorMessage,
@@ -996,8 +1114,19 @@ export default function NewSalePage() {
                   Documentos de la Venta
                 </CardTitle>
                 <CardDescription>
-                  Gestiona los documentos necesarios para completar la venta
+                  {savedSaleId 
+                    ? 'La venta ya está guardada. Puedes generar y subir documentos (opcional).'
+                    : 'Gestiona los documentos necesarios para completar la venta'
+                  }
                 </CardDescription>
+                {savedSaleId && (
+                  <div className="mt-2 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                    <p className="text-sm text-green-700 dark:text-green-300 flex items-center gap-2">
+                      <Check className="h-4 w-4" />
+                      Venta guardada correctamente. Los documentos son opcionales.
+                    </p>
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* SECTION 1: Required Payment Method Documents */}
@@ -1124,11 +1253,11 @@ export default function NewSalePage() {
                         Genera contratos y documentos automáticamente con los datos del vehículo y cliente.
                       </p>
 
-                      {(!selectedVehicle || !selectedClient) && (
+                      {!savedSaleId && (!selectedVehicle || !selectedClient) && (
                         <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800 mb-4">
                           <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                             <AlertTriangle className="h-3 w-3" />
-                            Selecciona un vehículo y cliente en el paso 1 para poder generar documentos.
+                            La venta debe guardarse primero (paso 3) antes de generar documentos.
                           </p>
                         </div>
                       )}
@@ -1204,7 +1333,7 @@ export default function NewSalePage() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => generateDocumentFromTemplate(template)}
-                                    disabled={isGenerating || !selectedVehicle || !selectedClient}
+                                    disabled={isGenerating || !savedSaleId}
                                   >
                                     {isGenerating ? (
                                       <>
@@ -1365,25 +1494,38 @@ export default function NewSalePage() {
           </Button>
 
           {currentStep < 4 ? (
-            <Button type="button" onClick={handleNext}>
-              Siguiente
-              <ChevronRight className="h-4 w-4 ml-1" />
+            <Button 
+              type="button" 
+              onClick={handleNext}
+              disabled={currentStep === 3 && savingSale}
+            >
+              {currentStep === 3 && savingSale ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Guardando venta...
+                </>
+              ) : (
+                <>
+                  Siguiente
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </>
+              )}
             </Button>
           ) : (
             <Button
               type="button"
               onClick={handleSubmit(onSubmit)}
-              disabled={loading}
+              disabled={loading || !savedSaleId}
             >
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creando...
+                  Guardando documentos...
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-1" />
-                  Crear Venta
+                  Finalizar
                 </>
               )}
             </Button>

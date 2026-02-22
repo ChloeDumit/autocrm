@@ -21,6 +21,7 @@ import {
   TrendingUp,
   FileText
 } from 'lucide-react'
+import { RodarLogo } from '@/components/ui/rodar-logo'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -33,7 +34,7 @@ export default function LoginPage() {
   const { config } = useAppConfig()
 
   const primaryColor = config?.colorPrimario || '#75AADB'
-  const nombreEmpresa = config?.nombreEmpresa || 'CarsUY'
+  const nombreEmpresa = config?.nombreEmpresa || 'Rodar'
   const logo = config?.logo
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -82,19 +83,7 @@ export default function LoginPage() {
           {/* Logo */}
           <div>
             <Link href="/">
-              <svg width="140" height="58" viewBox="0 0 120 50" className="h-14 w-auto">
-                <text x="60" y="26"
-                  fontFamily="Arial Black, sans-serif"
-                  fontSize="30" fontWeight="900"
-                  fill="white"
-                  textAnchor="middle">CARS</text>
-                <rect x="12" y="32" width="96" height="3" fill="rgba(255,255,255,0.6)" rx="1"/>
-                <text x="60" y="46"
-                  fontFamily="Helvetica Neue, sans-serif"
-                  fontSize="11" fontWeight="600"
-                  letterSpacing="6" fill="rgba(255,255,255,0.8)"
-                  textAnchor="middle">UY</text>
-              </svg>
+              <RodarLogo variant="mono-white" size="lg" />
             </Link>
           </div>
 
@@ -127,7 +116,7 @@ export default function LoginPage() {
 
           {/* Footer */}
           <div className="text-sky-200 text-sm">
-            © 2024 CarsUY. Software para automotoras.
+            © 2026 Rodar. Software para automotoras.
           </div>
         </div>
       </div>
@@ -138,19 +127,7 @@ export default function LoginPage() {
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
             <Link href="/" className="inline-block">
-              <svg width="120" height="50" viewBox="0 0 120 50" className="h-12 w-auto">
-                <text x="60" y="26"
-                  fontFamily="Arial Black, sans-serif"
-                  fontSize="30" fontWeight="900"
-                  className="fill-gray-900 dark:fill-white"
-                  textAnchor="middle">CARS</text>
-                <rect x="12" y="32" width="96" height="3" fill="#75AADB" rx="1"/>
-                <text x="60" y="46"
-                  fontFamily="Helvetica Neue, sans-serif"
-                  fontSize="11" fontWeight="600"
-                  letterSpacing="6" fill="#75AADB"
-                  textAnchor="middle">UY</text>
-              </svg>
+              <RodarLogo variant="default" size="lg" className="text-gray-900 dark:text-white" />
             </Link>
           </div>
 

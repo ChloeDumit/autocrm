@@ -47,6 +47,7 @@ export const TEMPLATE_VARIABLE_CATEGORIES: VariableCategory[] = [
     description: 'Datos de la transacción',
     variables: [
       { key: 'precio_final', label: 'Precio final', exampleValue: '24500' },
+      { key: 'venta_precio', label: 'Precio de venta (alias)', exampleValue: '24500' },
       { key: 'vendedor_nombre', label: 'Vendedor', exampleValue: 'María García' },
     ]
   },

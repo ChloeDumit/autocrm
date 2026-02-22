@@ -53,7 +53,12 @@ export default function SettingsPage() {
     setLoading(true)
 
     try {
-      await api.put('/app-config', formData)
+      // Fetch current config to preserve fields not in this form (colors, templates)
+      const currentConfig = await api.get('/app-config')
+      await api.put('/app-config', {
+        ...currentConfig.data,
+        ...formData,
+      })
       toast({
         title: 'Configuración guardada',
         description: 'Los cambios se aplicaron correctamente',
@@ -224,6 +229,7 @@ export default function SettingsPage() {
             </form>
           </CardContent>
         </Card>
+
       </div>
     </MainLayout>
   )

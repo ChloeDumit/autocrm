@@ -118,7 +118,7 @@ app.use('/uploads/images', express.static(path.join(__dirname, '../uploads/image
 app.use('/uploads/documents', express.static(path.join(__dirname, '../uploads/documents')));
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'AutoCRM API is running' });
+  res.json({ status: 'ok', message: 'Rodar API is running' });
 });
 
 app.listen(PORT, () => {

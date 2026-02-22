@@ -58,7 +58,7 @@ function SuperAdminLayoutContent({ children }: { children: React.ReactNode }) {
           {/* Logo */}
           <div className="flex h-16 items-center border-b border-slate-700 px-6">
             <Building2 className="h-8 w-8 text-blue-500" />
-            <span className="ml-3 text-xl font-bold">AutoCRM Admin</span>
+            <span className="ml-3 text-xl font-bold">Rodar Admin</span>
           </div>
 
           {/* Navigation */}

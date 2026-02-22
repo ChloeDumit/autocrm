@@ -87,6 +87,8 @@ interface Sale {
   notas?: string
   createdAt: string
   updatedAt: string
+  vehicleId: string
+  clientId: string
   vehicle: {
     id: string
     marca: string

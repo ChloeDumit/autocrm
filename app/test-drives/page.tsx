@@ -18,6 +18,8 @@ interface TestDrive {
   hora: string
   estado: string
   notas?: string
+  vehicleId: string
+  clientId: string
   vehicle: {
     marca: string
     modelo: string

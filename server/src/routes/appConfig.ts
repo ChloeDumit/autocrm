@@ -12,6 +12,9 @@ const configSchema = z.object({
   colorPrimario: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   colorSecundario: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   logo: z.string().optional().or(z.literal('')),
+  plantillaInstagram: z.string().optional().nullable(),
+  plantillaMercadolibreTitulo: z.string().optional().nullable(),
+  plantillaMercadolibreDescripcion: z.string().optional().nullable(),
 });
 
 // Apply tenant middleware to all routes
@@ -32,7 +35,7 @@ router.get('/', async (req: TenantRequest, res) => {
       // Create default config for this tenant
       config = await prisma.appConfig.create({
         data: {
-          nombreEmpresa: req.tenant?.name || 'AutoCRM',
+          nombreEmpresa: req.tenant?.name || 'Rodar',
           colorPrimario: '#3b82f6',
           colorSecundario: '#1e40af',
           tenantId: req.tenantId,
@@ -60,25 +63,24 @@ router.put('/', authenticate, requireRole('ADMIN'), async (req: AuthRequest, res
       where: { tenantId: req.tenantId },
     });
 
+    const configData = {
+      nombreEmpresa: data.nombreEmpresa,
+      colorPrimario: data.colorPrimario,
+      colorSecundario: data.colorSecundario,
+      logo: data.logo || null,
+      plantillaInstagram: data.plantillaInstagram || null,
+      plantillaMercadolibreTitulo: data.plantillaMercadolibreTitulo || null,
+      plantillaMercadolibreDescripcion: data.plantillaMercadolibreDescripcion || null,
+    };
+
     if (!config) {
       config = await prisma.appConfig.create({
-        data: {
-          nombreEmpresa: data.nombreEmpresa,
-          colorPrimario: data.colorPrimario,
-          colorSecundario: data.colorSecundario,
-          logo: data.logo || null,
-          tenantId: req.tenantId,
-        },
+        data: { ...configData, tenantId: req.tenantId },
       });
     } else {
       config = await prisma.appConfig.update({
         where: { tenantId: req.tenantId },
-        data: {
-          nombreEmpresa: data.nombreEmpresa,
-          colorPrimario: data.colorPrimario,
-          colorSecundario: data.colorSecundario,
-          logo: data.logo || null,
-        },
+        data: configData,
       });
     }
 

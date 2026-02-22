@@ -22,6 +22,7 @@ import {
   FileText,
   Sparkles,
 } from 'lucide-react';
+import { RodarLogo } from '@/components/ui/rodar-logo';
 
 export default function RegisterCompanyPage() {
   const [step, setStep] = useState(1);
@@ -190,7 +191,7 @@ export default function RegisterCompanyPage() {
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 mb-8 border border-gray-200 dark:border-slate-700 shadow-lg">
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Tu dirección será:</p>
             <p className="text-xl font-bold text-sky-600 dark:text-sky-400">
-              {formData.subdomain}.carsuy.com
+              {formData.subdomain}.rodar.uy
             </p>
           </div>
           <Link
@@ -220,19 +221,7 @@ export default function RegisterCompanyPage() {
           {/* Logo */}
           <div>
             <Link href="/">
-              <svg width="140" height="58" viewBox="0 0 120 50" className="h-14 w-auto">
-                <text x="60" y="26"
-                  fontFamily="Arial Black, sans-serif"
-                  fontSize="30" fontWeight="900"
-                  fill="white"
-                  textAnchor="middle">CARS</text>
-                <rect x="12" y="32" width="96" height="3" fill="rgba(255,255,255,0.6)" rx="1"/>
-                <text x="60" y="46"
-                  fontFamily="Helvetica Neue, sans-serif"
-                  fontSize="11" fontWeight="600"
-                  letterSpacing="6" fill="rgba(255,255,255,0.8)"
-                  textAnchor="middle">UY</text>
-              </svg>
+              <RodarLogo variant="mono-white" size="lg" />
             </Link>
           </div>
 
@@ -275,7 +264,7 @@ export default function RegisterCompanyPage() {
 
           {/* Footer */}
           <div className="text-sky-200 text-sm">
-            © 2024 CarsUY. Software para automotoras.
+            © 2026 Rodar. Software para automotoras.
           </div>
         </div>
       </div>
@@ -286,19 +275,7 @@ export default function RegisterCompanyPage() {
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
             <Link href="/" className="inline-block">
-              <svg width="120" height="50" viewBox="0 0 120 50" className="h-12 w-auto">
-                <text x="60" y="26"
-                  fontFamily="Arial Black, sans-serif"
-                  fontSize="30" fontWeight="900"
-                  className="fill-gray-900 dark:fill-white"
-                  textAnchor="middle">CARS</text>
-                <rect x="12" y="32" width="96" height="3" fill="#75AADB" rx="1"/>
-                <text x="60" y="46"
-                  fontFamily="Helvetica Neue, sans-serif"
-                  fontSize="11" fontWeight="600"
-                  letterSpacing="6" fill="#75AADB"
-                  textAnchor="middle">UY</text>
-              </svg>
+              <RodarLogo variant="default" size="lg" className="text-gray-900 dark:text-white" />
             </Link>
           </div>
 
@@ -386,7 +363,7 @@ export default function RegisterCompanyPage() {
                       placeholder="autosdelnorte"
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">
-                      .carsuy.com
+                      .rodar.uy
                     </span>
                   </div>
                   <div className="mt-2 h-5">
@@ -485,7 +462,7 @@ export default function RegisterCompanyPage() {
                   <p className="text-sm text-sky-700 dark:text-sky-300">
                     <span className="font-semibold">{formData.companyName}</span>
                     <br />
-                    <span className="text-sky-600 dark:text-sky-400">{formData.subdomain}.carsuy.com</span>
+                    <span className="text-sky-600 dark:text-sky-400">{formData.subdomain}.rodar.uy</span>
                   </p>
                 </div>
 

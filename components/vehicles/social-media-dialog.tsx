@@ -130,7 +130,7 @@ export function SocialMediaDialog({ open, onClose, vehicleId }: SocialMediaDialo
                     </div>
                     <Textarea
                       value={instagramData.caption}
-                      readOnly
+                      onChange={(e) => setInstagramData({ ...instagramData, caption: e.target.value })}
                       rows={12}
                       className="font-mono text-sm"
                     />
@@ -179,7 +179,7 @@ export function SocialMediaDialog({ open, onClose, vehicleId }: SocialMediaDialo
                     </div>
                     <Textarea
                       value={mercadolibreData.title}
-                      readOnly
+                      onChange={(e) => setMercadolibreData({ ...mercadolibreData, title: e.target.value })}
                       rows={2}
                     />
                   </div>
@@ -207,7 +207,7 @@ export function SocialMediaDialog({ open, onClose, vehicleId }: SocialMediaDialo
                     </div>
                     <Textarea
                       value={mercadolibreData.description}
-                      readOnly
+                      onChange={(e) => setMercadolibreData({ ...mercadolibreData, description: e.target.value })}
                       rows={8}
                     />
                   </div>

@@ -42,6 +42,8 @@ interface Sale {
   etapa: string
   precioFinal?: number
   notas?: string
+  vehicleId: string
+  clientId: string
   vehicle: {
     id: string
     marca: string

@@ -435,6 +435,12 @@ model AppConfig {
   colorPrimario   String   @default("#3b82f6")
   colorSecundario String   @default("#1e40af")
   logo            String?
+
+  // Social media templates (null = use default)
+  plantillaInstagram              String?
+  plantillaMercadolibreTitulo     String?
+  plantillaMercadolibreDescripcion String?
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

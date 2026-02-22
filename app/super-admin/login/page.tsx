@@ -36,7 +36,7 @@ export default function SuperAdminLoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 mb-4">
             <Building2 className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">AutoCRM Admin</h1>
+          <h1 className="text-2xl font-bold text-white">Rodar Admin</h1>
           <p className="text-slate-400 mt-2">Super Admin Portal</p>
         </div>
 
@@ -62,7 +62,7 @@ export default function SuperAdminLoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="admin@autocrm.com"
+                  placeholder="admin@rodar.uy"
                   required
                 />
               </div>

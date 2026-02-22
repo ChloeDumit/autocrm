@@ -2,7 +2,7 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM_EMAIL = process.env.FROM_EMAIL || 'CarsUY <noreply@carsuy.com>';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'Rodar <noreply@rodar.uy>';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 // Email templates
@@ -11,15 +11,15 @@ const emailStyles = `
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; }
     .container { max-width: 600px; margin: 0 auto; padding: 20px; }
     .header { text-align: center; padding: 30px 0; }
-    .logo { font-family: 'Arial Black', sans-serif; font-size: 32px; font-weight: 900; color: #0f172a; }
-    .logo-divider { display: block; width: 100px; height: 3px; background: #75AADB; margin: 5px auto; border-radius: 2px; }
-    .logo-uy { font-family: 'Helvetica Neue', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 6px; color: #75AADB; }
+    .logo { font-family: 'Inter', -apple-system, sans-serif; font-size: 32px; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; }
+    .logo-divider { display: block; width: 40px; height: 3px; background: #3b82f6; margin: 5px auto 0 auto; border-radius: 2px; }
+    .logo-tagline { font-family: 'Inter', -apple-system, sans-serif; font-size: 11px; font-weight: 400; letter-spacing: 0.08em; color: #3b82f6; }
     .content { background: #f8fafc; border-radius: 16px; padding: 40px; margin: 20px 0; }
     .button { display: inline-block; background: linear-gradient(to right, #0ea5e9, #2563eb); color: white !important; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 600; margin: 20px 0; }
     .button:hover { background: linear-gradient(to right, #0284c7, #1d4ed8); }
     .footer { text-align: center; color: #64748b; font-size: 14px; padding: 20px 0; }
     .highlight { background: #e0f2fe; border-radius: 8px; padding: 16px; margin: 16px 0; }
-    .highlight strong { color: #0369a1; }
+    .highlight strong { color: #3b82f6; }
     h1 { color: #0f172a; margin-bottom: 16px; }
     p { color: #475569; margin: 12px 0; }
   </style>
@@ -27,15 +27,15 @@ const emailStyles = `
 
 const logoHtml = `
   <div class="header">
-    <div class="logo">CARS</div>
+    <div class="logo">rodar</div>
     <span class="logo-divider"></span>
-    <div class="logo-uy">UY</div>
+    <div class="logo-tagline">software para automotoras</div>
   </div>
 `;
 
 const footerHtml = `
   <div class="footer">
-    <p>© ${new Date().getFullYear()} CarsUY. Software para automotoras.</p>
+    <p>© ${new Date().getFullYear()} Rodar. Software para automotoras.</p>
     <p>Este email fue enviado automáticamente. Por favor no respondas a este mensaje.</p>
   </div>
 `;
@@ -56,11 +56,11 @@ export async function sendRegistrationConfirmation(
           ${logoHtml}
           <div class="content">
             <h1>¡Recibimos tu solicitud!</h1>
-            <p>Gracias por registrar <strong>${companyName}</strong> en CarsUY.</p>
+            <p>Gracias por registrar <strong>${companyName}</strong> en Rodar.</p>
             <p>Estamos revisando tu solicitud y te notificaremos por email cuando tu cuenta esté lista.</p>
             <div class="highlight">
               <p><strong>Tu dirección será:</strong></p>
-              <p style="font-size: 18px; font-weight: 600; color: #0369a1;">${subdomain}.carsuy.com</p>
+              <p style="font-size: 18px; font-weight: 600; color: #0369a1;">${subdomain}.rodar.uy</p>
             </div>
             <p>El proceso de aprobación generalmente toma 1-2 días hábiles.</p>
             <p>Si tenés alguna consulta, no dudes en contactarnos.</p>
@@ -74,7 +74,7 @@ export async function sendRegistrationConfirmation(
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: 'Recibimos tu solicitud - CarsUY',
+      subject: 'Recibimos tu solicitud - Rodar',
       html,
     });
 
@@ -98,7 +98,7 @@ export async function sendAccountApproved(
   companyName: string,
   subdomain: string
 ) {
-  const loginUrl = `https://${subdomain}.carsuy.com/login`;
+  const loginUrl = `https://${subdomain}.rodar.uy/login`;
 
   try {
     const html = `
@@ -111,10 +111,10 @@ export async function sendAccountApproved(
           <div class="content">
             <h1>¡Tu cuenta está activa!</h1>
             <p>Hola <strong>${userName}</strong>,</p>
-            <p>Tu cuenta de <strong>${companyName}</strong> ha sido aprobada y ya podés empezar a usar CarsUY.</p>
+            <p>Tu cuenta de <strong>${companyName}</strong> ha sido aprobada y ya podés empezar a usar Rodar.</p>
             <div class="highlight">
               <p><strong>Tu dirección de acceso:</strong></p>
-              <p style="font-size: 18px; font-weight: 600; color: #0369a1;">${subdomain}.carsuy.com</p>
+              <p style="font-size: 18px; font-weight: 600; color: #0369a1;">${subdomain}.rodar.uy</p>
             </div>
             <p>Usá el email y contraseña que registraste para iniciar sesión.</p>
             <div style="text-align: center;">
@@ -131,7 +131,7 @@ export async function sendAccountApproved(
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: '¡Tu cuenta está activa! - CarsUY',
+      subject: '¡Tu cuenta está activa! - Rodar',
       html,
     });
 
@@ -185,7 +185,7 @@ export async function sendAccountRejected(
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: 'Actualización sobre tu solicitud - CarsUY',
+      subject: 'Actualización sobre tu solicitud - Rodar',
       html,
     });
 
@@ -211,7 +211,7 @@ export async function sendPasswordReset(
 ) {
   // For tenant users, use subdomain URL; for super admin, use main URL
   const baseUrl = subdomain
-    ? `https://${subdomain}.carsuy.com`
+    ? `https://${subdomain}.rodar.uy`
     : FRONTEND_URL;
   const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
@@ -226,7 +226,7 @@ export async function sendPasswordReset(
           <div class="content">
             <h1>Restablecer tu contraseña</h1>
             <p>Hola <strong>${userName}</strong>,</p>
-            <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en CarsUY.</p>
+            <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en Rodar.</p>
             <p>Hacé click en el siguiente botón para crear una nueva contraseña:</p>
             <div style="text-align: center;">
               <a href="${resetUrl}" class="button">Restablecer Contraseña</a>
@@ -243,7 +243,7 @@ export async function sendPasswordReset(
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: 'Restablecer tu contraseña - CarsUY',
+      subject: 'Restablecer tu contraseña - Rodar',
       html,
     });
 
@@ -268,7 +268,7 @@ export async function sendWelcomeEmail(
   subdomain: string,
   temporaryPassword?: string
 ) {
-  const loginUrl = `https://${subdomain}.carsuy.com/login`;
+  const loginUrl = `https://${subdomain}.rodar.uy/login`;
 
   try {
     const html = `
@@ -281,12 +281,12 @@ export async function sendWelcomeEmail(
           <div class="content">
             <h1>¡Bienvenido a ${companyName}!</h1>
             <p>Hola <strong>${userName}</strong>,</p>
-            <p>Se ha creado una cuenta para vos en el sistema CarsUY de <strong>${companyName}</strong>.</p>
+            <p>Se ha creado una cuenta para vos en el sistema Rodar de <strong>${companyName}</strong>.</p>
             <div class="highlight">
               <p><strong>Tus datos de acceso:</strong></p>
               <p>Email: <strong>${email}</strong></p>
               ${temporaryPassword ? `<p>Contraseña temporal: <strong>${temporaryPassword}</strong></p>` : ''}
-              <p>URL: <strong>${subdomain}.carsuy.com</strong></p>
+              <p>URL: <strong>${subdomain}.rodar.uy</strong></p>
             </div>
             ${temporaryPassword ? '<p>Te recomendamos cambiar tu contraseña después de iniciar sesión por primera vez.</p>' : ''}
             <div style="text-align: center;">
@@ -302,7 +302,7 @@ export async function sendWelcomeEmail(
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: `Bienvenido a ${companyName} - CarsUY`,
+      subject: `Bienvenido a ${companyName} - Rodar`,
       html,
     });
 

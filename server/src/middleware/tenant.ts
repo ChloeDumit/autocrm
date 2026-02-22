@@ -28,7 +28,6 @@ export const RESERVED_SUBDOMAINS = [
   'help',
   'billing',
   'test',
-  'demo',
   'staging',
   'dev',
 ];

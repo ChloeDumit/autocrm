@@ -500,7 +500,7 @@ export default function TenantDetailPage() {
                       {sale.vehicle.marca} {sale.vehicle.modelo}
                     </td>
                     <td className="py-3">{sale.client.nombre}</td>
-                    <td className="py-3">${sale.precioVenta.toLocaleString()}</td>
+                    <td className="py-3">${sale.precioVenta}</td>
                     <td className="py-3">
                       <span className="px-2 py-1 rounded text-xs bg-blue-500/20 text-blue-400 capitalize">
                         {sale.etapa.toLowerCase()}

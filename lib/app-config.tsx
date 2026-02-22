@@ -6,7 +6,12 @@ import api from './api'
 interface AppConfig {
   id: string
   nombreEmpresa: string
+  colorPrimario: string
+  colorSecundario: string
   logo?: string
+  plantillaInstagram?: string | null
+  plantillaMercadolibreTitulo?: string | null
+  plantillaMercadolibreDescripcion?: string | null
 }
 
 interface AppConfigContextType {

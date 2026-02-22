@@ -91,7 +91,6 @@ export function VehicleCard({ vehicle, onEdit, onDelete, onGenerateSocial, onMan
             </svg>
           </div>
         )}
-        {console.log(status.className, status.label)}
         {/* Status Badge - positioned on image */}
         <Badge className={cn("absolute top-3 left-3 shadow-sm border", status.className)}>
           {status.label}
@@ -115,12 +114,13 @@ export function VehicleCard({ vehicle, onEdit, onDelete, onGenerateSocial, onMan
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                onClick={(e) => e.stopPropagation()}
               >
                 <MoreHorizontal className="h-4 w-4" />
                 <span className="sr-only">Abrir menú</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-48" onClick={(e) => e.stopPropagation()}>
               <DropdownMenuItem onClick={() => router.push(`/vehicles/${vehicle.id}`)}>
                 <Eye className="mr-2 h-4 w-4" />
                 Ver detalles

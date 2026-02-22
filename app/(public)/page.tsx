@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import {
   Car,
@@ -23,6 +24,7 @@ import {
   Clock,
   Sparkles,
 } from 'lucide-react';
+import { RodarLogo } from '@/components/ui/rodar-logo';
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -115,27 +117,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-2">
-              <svg width="80" height="40" viewBox="0 0 160 120" className="h-10 w-auto">
-                <text
-                  x="80" y="52"
-                  fontFamily="Arial Black, Helvetica Neue, sans-serif"
-                  fontSize="54"
-                  fontWeight="900"
-                  className="fill-gray-900 dark:fill-white"
-                  textAnchor="middle"
-                  letterSpacing="-1"
-                >CARS</text>
-                <rect x="20" y="64" width="120" height="4" fill="#75AADB" rx="2"/>
-                <text
-                  x="80" y="102"
-                  fontFamily="Helvetica Neue, sans-serif"
-                  fontSize="28"
-                  fontWeight="200"
-                  letterSpacing="22"
-                  fill="#75AADB"
-                  textAnchor="middle"
-                >UY</text>
-              </svg>
+              <RodarLogo variant="default" size="md" className="text-gray-900 dark:text-white" />
             </div>
 
             {/* Desktop nav */}
@@ -206,10 +188,10 @@ export default function LandingPage() {
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white leading-tight">
               Tu automotora,
-              <span className="text-[#75AADB]"> organizada</span>
+              <span className="text-blue-500"> organizada</span>
             </h1>
             <p className="mt-6 text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              CarsUY es la plataforma todo-en-uno para gestionar tu automotora.
+              Rodar es la plataforma todo-en-uno para gestionar tu automotora.
               Inventario, clientes, ventas y documentos en un solo lugar.
             </p>
             <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
@@ -236,37 +218,14 @@ export default function LandingPage() {
           <div className="mt-16 relative">
             <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-slate-950 via-transparent to-transparent z-10 pointer-events-none" />
             <div className="bg-gradient-to-br from-sky-500 to-blue-600 rounded-2xl p-2 shadow-2xl shadow-sky-500/20">
-              <div className="bg-slate-900 rounded-xl overflow-hidden">
-                <div className="flex items-center gap-2 px-4 py-3 bg-slate-800 border-b border-slate-700">
-                  <div className="w-3 h-3 rounded-full bg-red-500" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                  <div className="w-3 h-3 rounded-full bg-green-500" />
-                  <span className="ml-2 text-sm text-slate-400">Panel de CarsUY</span>
-                </div>
-                <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {/* Mock dashboard stats */}
-                  <div className="bg-slate-800 rounded-lg p-4">
-                    <p className="text-slate-400 text-sm">Total Vehículos</p>
-                    <p className="text-2xl font-bold text-white">48</p>
-                    <p className="text-sky-400 text-sm">En stock</p>
-                  </div>
-                  <div className="bg-slate-800 rounded-lg p-4">
-                    <p className="text-slate-400 text-sm">Clientes</p>
-                    <p className="text-2xl font-bold text-white">156</p>
-                    <p className="text-sky-400 text-sm">Registrados</p>
-                  </div>
-                  <div className="bg-slate-800 rounded-lg p-4">
-                    <p className="text-slate-400 text-sm">Ventas del Mes</p>
-                    <p className="text-2xl font-bold text-white">7</p>
-                    <p className="text-sky-400 text-sm">Completadas</p>
-                  </div>
-                  <div className="bg-slate-800 rounded-lg p-4">
-                    <p className="text-slate-400 text-sm">Test Drives</p>
-                    <p className="text-2xl font-bold text-white">12</p>
-                    <p className="text-sky-400 text-sm">Esta semana</p>
-                  </div>
-                </div>
-              </div>
+              <Image
+                src="/dashboard-preview.png"
+                alt="Panel de Rodar - Dashboard de gestión para automotoras"
+                width={2856}
+                height={1566}
+                className="rounded-xl"
+                priority
+              />
             </div>
           </div>
         </div>
@@ -360,7 +319,7 @@ export default function LandingPage() {
             </div>
             <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-2xl">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 text-center">
-                Lo que incluye CarsUY
+                Lo que incluye Rodar
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-4 bg-gray-50 dark:bg-slate-700 rounded-xl">
@@ -477,19 +436,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-4 gap-12">
             <div>
               <div className="flex items-center gap-2 mb-4">
-              <svg width="120" height="50" viewBox="0 0 120 50">
-  <text x="60" y="26" 
-    font-family="Arial Black, sans-serif" 
-    font-size="30" font-weight="900" 
-    fill="#0a0a0a" text-anchor="middle">CARS</text>
-  <rect x="12" y="32" width="96" height="3" 
-    fill="#75AADB" rx="1"/>
-  <text x="60" y="46" 
-    font-family="Helvetica Neue, sans-serif" 
-    font-size="11" font-weight="600" 
-    letter-spacing="6" fill="#75AADB" 
-    text-anchor="middle">UY</text>
-</svg>
+                <RodarLogo variant="mono-white" size="lg" />
               </div>
               <p className="text-gray-400">
                 Software de gestión para automotoras. Hecho en Uruguay.
@@ -529,7 +476,7 @@ export default function LandingPage() {
           </div>
           <div className="mt-12 pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-gray-400 text-sm">
-              © 2024 Rodar. Todos los derechos reservados.
+              © 2026 Rodar. Todos los derechos reservados.
             </p>
           </div>
         </div>
