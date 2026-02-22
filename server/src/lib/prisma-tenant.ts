@@ -48,7 +48,9 @@ export function createTenantPrismaClient(tenantId: string) {
           return result;
         },
         async create({ args, query }) {
-          args.data = { ...args.data, tenantId };
+          // Remove tenant relation if present (can't use both tenantId and tenant)
+          const { tenant, ...dataWithoutTenant } = args.data as any;
+          args.data = { ...dataWithoutTenant, tenantId };
           return query(args);
         },
         async update({ args, query }) {
@@ -95,7 +97,9 @@ export function createTenantPrismaClient(tenantId: string) {
           return result;
         },
         async create({ args, query }) {
-          args.data = { ...args.data, tenantId };
+          // Remove tenant relation if present (can't use both tenantId and tenant)
+          const { tenant, ...dataWithoutTenant } = args.data as any;
+          args.data = { ...dataWithoutTenant, tenantId };
           return query(args);
         },
         async update({ args, query }) {
@@ -141,7 +145,9 @@ export function createTenantPrismaClient(tenantId: string) {
           return result;
         },
         async create({ args, query }) {
-          args.data = { ...args.data, tenantId };
+          // Remove tenant relation if present (can't use both tenantId and tenant)
+          const { tenant, ...dataWithoutTenant } = args.data as any;
+          args.data = { ...dataWithoutTenant, tenantId };
           return query(args);
         },
         async update({ args, query }) {
@@ -187,7 +193,9 @@ export function createTenantPrismaClient(tenantId: string) {
           return result;
         },
         async create({ args, query }) {
-          args.data = { ...args.data, tenantId };
+          // Remove tenant relation if present (can't use both tenantId and tenant)
+          const { tenant, ...dataWithoutTenant } = args.data as any;
+          args.data = { ...dataWithoutTenant, tenantId };
           return query(args);
         },
         async update({ args, query }) {
@@ -233,7 +241,9 @@ export function createTenantPrismaClient(tenantId: string) {
           return result;
         },
         async create({ args, query }) {
-          args.data = { ...args.data, tenantId };
+          // Remove tenant relation if present (can't use both tenantId and tenant)
+          const { tenant, ...dataWithoutTenant } = args.data as any;
+          args.data = { ...dataWithoutTenant, tenantId };
           return query(args);
         },
         async update({ args, query }) {
@@ -279,7 +289,9 @@ export function createTenantPrismaClient(tenantId: string) {
           return result;
         },
         async create({ args, query }) {
-          args.data = { ...args.data, tenantId };
+          // Remove tenant relation if present (can't use both tenantId and tenant)
+          const { tenant, ...dataWithoutTenant } = args.data as any;
+          args.data = { ...dataWithoutTenant, tenantId };
           return query(args);
         },
         async update({ args, query }) {
@@ -325,7 +337,9 @@ export function createTenantPrismaClient(tenantId: string) {
           return result;
         },
         async create({ args, query }) {
-          args.data = { ...args.data, tenantId };
+          // Remove tenant relation if present (can't use both tenantId and tenant)
+          const { tenant, ...dataWithoutTenant } = args.data as any;
+          args.data = { ...dataWithoutTenant, tenantId };
           return query(args);
         },
         async update({ args, query }) {
@@ -371,7 +385,9 @@ export function createTenantPrismaClient(tenantId: string) {
           return result;
         },
         async create({ args, query }) {
-          args.data = { ...args.data, tenantId };
+          // Remove tenant relation if present (can't use both tenantId and tenant)
+          const { tenant, ...dataWithoutTenant } = args.data as any;
+          args.data = { ...dataWithoutTenant, tenantId };
           return query(args);
         },
         async update({ args, query }) {
@@ -417,7 +433,9 @@ export function createTenantPrismaClient(tenantId: string) {
           return result;
         },
         async create({ args, query }) {
-          args.data = { ...args.data, tenantId };
+          // Remove tenant relation if present (can't use both tenantId and tenant)
+          const { tenant, ...dataWithoutTenant } = args.data as any;
+          args.data = { ...dataWithoutTenant, tenantId };
           return query(args);
         },
         async update({ args, query }) {
@@ -463,12 +481,16 @@ export function createTenantPrismaClient(tenantId: string) {
           return result;
         },
         async create({ args, query }) {
-          args.data = { ...args.data, tenantId };
+          // Remove tenant relation if present (can't use both tenantId and tenant)
+          const { tenant, ...dataWithoutTenant } = args.data as any;
+          args.data = { ...dataWithoutTenant, tenantId };
           return query(args);
         },
         async upsert({ args, query }) {
           args.where = { ...args.where, tenantId };
-          args.create = { ...args.create, tenantId };
+          // Remove tenant relation if present
+          const { tenant, ...createWithoutTenant } = args.create as any;
+          args.create = { ...createWithoutTenant, tenantId };
           return query(args);
         },
         async update({ args, query }) {

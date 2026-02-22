@@ -1,0 +1,34 @@
+services:
+  # Frontend (Next.js)
+  - type: web
+    name: autocrm-frontend
+    env: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+    healthCheckPath: /
+
+  # Backend (Express) - Web Service
+  - type: web
+    name: autocrm-backend
+    env: node
+    plan: starter
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: PORT
+        value: "8000"
+      - key: FRONTEND_URL
+        sync: false

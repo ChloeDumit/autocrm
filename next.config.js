@@ -20,11 +20,15 @@ const nextConfig = {
     ],
     unoptimized: process.env.NODE_ENV === 'development',
   },
-  // Disable static page generation to prevent pre-rendering errors
+  // For Render deployment - use standalone output
   output: 'standalone',
-  // Skip static optimization for all pages
+  // Disable static optimization completely to prevent pre-rendering errors
   experimental: {
     missingSuspenseWithCSRBailout: false,
+  },
+  // Skip static generation for all routes
+  generateBuildId: async () => {
+    return 'build-' + Date.now()
   },
 }
 

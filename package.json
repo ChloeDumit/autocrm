@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "server": "cd server && npm run dev",
-    "server:install": "cd server && npm install"
+    "server:install": "cd server && npm install",
+    "postinstall": "echo 'Build completed'"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",

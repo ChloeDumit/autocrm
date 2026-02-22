@@ -22,26 +22,11 @@ function applyTemplate(template: string, vehicle: {
 }
 
 // Default templates (used when tenant has no custom template)
-const DEFAULT_INSTAGRAM = `🚗 {{marca}} {{modelo}} {{ano}}
+const DEFAULT_INSTAGRAM = '🚗 {{marca}} {{modelo}} {{ano}}\n\n💰 Precio: ${{precio}}\n📏 Kilometraje: {{kilometraje}} km\n{{descripcion}}\n\n#{{marca}} #{{modelo}} #AutoUsado #VentaDeAutos #Concesionaria\n#{{ano}} #Autos #Vehiculos';
 
-💰 Precio: ${{precio}}
-📏 Kilometraje: {{kilometraje}} km
-{{descripcion}}
+const DEFAULT_ML_TITLE = '{{marca}} {{modelo}} {{ano}} - {{kilometraje}} km';
 
-#{{marca}} #{{modelo}} #AutoUsado #VentaDeAutos #Concesionaria
-#{{ano}} #Autos #Vehiculos`;
-
-const DEFAULT_ML_TITLE = `{{marca}} {{modelo}} {{ano}} - {{kilometraje}} km`;
-
-const DEFAULT_ML_DESCRIPTION = `{{marca}} {{modelo}} {{ano}}
-Kilometraje: {{kilometraje}} km
-Precio: ${{precio}}
-
-{{descripcion}}
-
-Estado: {{estado}}
-
-¡Contactanos para más información!`;
+const DEFAULT_ML_DESCRIPTION = '{{marca}} {{modelo}} {{ano}}\nKilometraje: {{kilometraje}} km\nPrecio: ${{precio}}\n\n{{descripcion}}\n\nEstado: {{estado}}\n\n¡Contactanos para más información!';
 
 // Generar texto para publicación de Instagram
 router.post('/instagram/generate', authenticate, async (req: AuthRequest, res) => {
