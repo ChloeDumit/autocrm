@@ -12,9 +12,16 @@ const nextConfig = {
         port: '8000',
         pathname: '/uploads/**',
       },
+      {
+        protocol: 'https',
+        hostname: '**',
+        pathname: '/uploads/**',
+      },
     ],
     unoptimized: process.env.NODE_ENV === 'development',
   },
+  // Output configuration for Vercel
+  output: 'standalone',
 }
 
 module.exports = nextConfig

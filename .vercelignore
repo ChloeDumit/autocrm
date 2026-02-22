@@ -1,0 +1,18 @@
+# Ignore server files (backend is deployed separately)
+server/
+node_modules/
+.next/
+.env.local
+.env*.local
+
+# Ignore development files
+*.log
+.DS_Store
+*.pem
+
+# Ignore test files
+**/__tests__/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
